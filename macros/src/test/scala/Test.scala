@@ -20,7 +20,8 @@ case class BarCfg(
     val bool  : Boolean = $
 
     object baz {
-      val name : String = $
+      val who  : String =  "Calvin"
+      val other: Int    = $
     }
   }
 }
@@ -31,7 +32,7 @@ case class WithOtherCfg(
                      reqStr  : String,
                      bar     : BarCfg
                    ) {
-  val simple : SimpleCfg = $
+  val simple : SimpleCfg = SimpleCfg(11, "11")
   object foo {
     val bool : Boolean = $
   }
@@ -47,6 +48,11 @@ object CompanionCfg {
   def apply(zyx: Int): Option[Any] = None
 }
 
+@Cfg
+case class WithDefaultCfg(
+                      int : Int    = 21,
+                      str : String = "someStr"
+                    )
 
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
@@ -55,13 +61,13 @@ object Test extends TestSuite {
       val conf = ConfigFactory.parseString(
         """
         int = 1
-        str = "hobbes"
+        str = "Hobbes"
       """)
 
       val cfg = SimpleCfg(conf)
 
       cfg.int  ==> 1
-      cfg.str  ==> "hobbes"
+      cfg.str  ==> "Hobbes"
     }
 
     "BarCfg" - {
@@ -73,7 +79,7 @@ object Test extends TestSuite {
         foo {
           bool = false
           baz {
-            name = calvin
+            other = 10
           }
         }
       """))
@@ -82,7 +88,8 @@ object Test extends TestSuite {
       bar.reqStr        ==> "reqStr"
       bar.long          ==> 1212100
       bar.foo.bool      ==> false
-      bar.foo.baz.name  ==> "calvin"
+      bar.foo.baz.who   ==> "Calvin"
+      bar.foo.baz.other ==> 10
     }
 
     "WithOtherCfg" - {
@@ -101,17 +108,13 @@ object Test extends TestSuite {
           foo {
             bool = false
             baz {
-              name = calvin
+              other = 20
             }
           }
         }
-        simple {
-          int = 0
-          str = "aha"
-        }
       """))
 
-      cfg.reqInt        ==> 2130
+      cfg.reqInt        ==>  2130
       cfg.reqStr        ==> "reqStr"
       cfg.foo.bool      ==> true
       cfg.other         ==> 1010
@@ -121,21 +124,29 @@ object Test extends TestSuite {
       bar.reqStr        ==> "reqStr"
       bar.long          ==> 1212100
       bar.foo.bool      ==> false
-      bar.foo.baz.name  ==> "calvin"
+      bar.foo.baz.who   ==> "Calvin"
+      bar.foo.baz.other ==> 20
 
-      cfg.simple.int    ==> 0
-      cfg.simple.str    ==> "aha"
+      cfg.simple.int    ==> 11
+      cfg.simple.str    ==> "11"
     }
     
     "CompanionCfg" - {
       val conf = ConfigFactory.parseString(
         """
-          |str = hobbes
+          |str = Hobbes
           |h = 9
         """.stripMargin)
       val cfg = CompanionCfg(conf)
-      cfg.str  ==> "hobbes"
+      cfg.str  ==> "Hobbes"
       cfg.h    ==> 9
+    }
+
+    "WithDefaultCfg" - {
+      val conf = ConfigFactory.parseString("")
+      val cfg = WithDefaultCfg(conf)
+      cfg.int  ==> 21
+      cfg.str  ==> "someStr"
     }
   }
 }

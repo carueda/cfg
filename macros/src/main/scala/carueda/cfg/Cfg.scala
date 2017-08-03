@@ -78,13 +78,25 @@ private object CfgUtil {
   private def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean): Defn.Def = {
     def getGetter(param: Term.Param): Term = {
       val declType = param.decltpe.get
-      if (isBasic(declType.syntax)) {
+      //println("createApply: " +name+ "::" +param.name+
+      // " declType = " + declType.syntax + " param.default=" +param.default)
+
+      val actualGetter: Term = if (isBasic(declType.syntax)) {
         Term.Name("c.get" + declType + s"""("${param.name}")""")
       }
       else {
         val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
         val constructor = Ctor.Ref.Name(declType.syntax)
         q"$constructor($arg)"
+      }
+
+      param.default match {
+        case None ⇒
+          actualGetter
+
+        case Some(default) ⇒
+          val cond = Term.Name(s"""c.hasPath("${param.name}")""")
+          q"""if ($cond) $actualGetter else $default"""
       }
     }
 
@@ -106,17 +118,26 @@ private object CfgUtil {
   }
 
   private def handleVal(v: Defn.Val, cn: String): List[Stat] = {
-    val Defn.Val(_, pats, Some(declTpe), _) = v
-    //println("handleVal:    " + pats.structure + "   declTpe=" + declTpe.structure)
+    val Defn.Val(_, pats, Some(declTpe), rhs) = v
+
+    //println("handleVal: cn=" +cn+ "  " + pats.structure +
+    // " declTpe=" + declTpe.structure + "  rhs=" + rhs)
 
     def getGetter(name: String): Term = {
-      if (isBasic(declTpe.syntax)) {
+      val actualGetter: Term = if (isBasic(declTpe.syntax)) {
         Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
       }
       else {
         val arg = Term.Name(s"""$cn.getConfig("$name")""")
         val constructor = Ctor.Ref.Name(declTpe.syntax)
         q"$constructor($arg)"
+      }
+
+      if (rhs.syntax == "$")
+        actualGetter
+      else {
+        val cond = Term.Name(cn + s""".hasPath("$name")""")
+        q"""if ($cond) $actualGetter else $rhs"""
       }
     }
 

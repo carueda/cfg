@@ -42,7 +42,7 @@ mechanism to load a concrete configuration, for example:
 val conf = ConfigFactory.parseString(
   """
   int = 1
-  str = "hobbes"
+  str = "Hobbes"
 """)
 ```
 
@@ -52,7 +52,7 @@ Then, just create the wrapper and enjoy the benefits:
 val cfg = SimpleCfg(conf)
 
 cfg.int  ==> 1
-cfg.str  ==> "hobbes"
+cfg.str  ==> "Hobbes"
 ```
 
 You can also include members in the case class:
@@ -69,7 +69,8 @@ case class BarCfg(
     val bool : Boolean = $
 
     object baz {
-      val name : String = "Calvin"
+      val who  : String = "Calvin"
+      val other: Int    = $
     }
   }
 }
@@ -79,10 +80,8 @@ which, in particular, allows to directly embed the specification of inner object
 without necessarily having to introduce a class for them.
 
 The `$` is a placeholder that gets replaced with appropriate extraction logic by
-the macro. A concrete initialization value (`"Calvin"` for the `name` entry above)
+the macro. A concrete initialization value (e.g., `"Calvin"` for the `who` entry above)
 indicates that the entry is optional, with the given value as the default.
-
-> Note: this mechanism is not implemented yet.
 
 Using `BarCfg`:
 
@@ -95,7 +94,6 @@ val bar = BarCfg(ConfigFactory.parseString(
     bool = false
     baz {
       long = 1212100
-      name = calvin
     }
   }
 """))
@@ -104,7 +102,7 @@ bar.reqInt        ==> 9393
 bar.reqStr        ==> "reqStr"
 bar.foo.bool      ==> false
 bar.foo.baz.long  ==> 1212100
-bar.foo.baz.name  ==> "calvin"
+bar.foo.baz.who   ==> "Calvin"
 ```
 
 Of course, you can refer to other `@Cfg`-annotated classes: 
@@ -137,7 +135,6 @@ val cfg = WithOtherCfg(ConfigFactory.parseString(
       bool = false
       baz {
         long = 1212100
-        name = calvin
       }
     }
   }
@@ -153,12 +150,11 @@ bar.reqInt        ==> 9393
 bar.reqStr        ==> "reqStr"
 bar.foo.bool      ==> false
 bar.foo.baz.long  ==> 1212100
-bar.foo.baz.name  ==> "calvin"
+bar.foo.baz.who   ==> "Calvin"
 ```
 
 ## TODO
 
-- default value
 - handle optional entry
 - handle list
 - Duration
