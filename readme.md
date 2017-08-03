@@ -73,7 +73,12 @@ case class CaseCfg(
     val bool : Boolean = $
   }
 }
+```
 
+In this case, `@Cfg` generates a companion object with `apply` method expecting
+a Typesafe Config instance:
+
+```scala
 val cfg = CaseCfg(ConfigFactory.parseString(
   """
   reqInt = 2130
