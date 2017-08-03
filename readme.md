@@ -3,8 +3,8 @@
 # `@Cfg` 
 
 `@Cfg` is a [Scalameta](http://scalameta.org/)-based annotation that allows to
-specify a configuration schema such that concrete configurations can be loaded 
-and used while enjoying full type safety and the code completion and navigation 
+specify the configuration of your application or library such that concrete configurations 
+can be loaded and used while enjoying full type safety and the code completion and navigation 
 capabilities of your IDE.
 
 WIP
@@ -15,10 +15,52 @@ Use the `@Cfg` annotation to specify the schema of your configuration:
 
 ```scala
 @Cfg
-class BarCfg(c: com.typesafe.config.Config) {
-  val reqInt  : Int    = $
-  val reqStr  : String = $
+case class SimpleCfg(
+                   int : Int,
+                   str : String
+                 )
+```
 
+The macro generates a companion object with `apply` method expecting
+a Typesafe Config instance:
+
+> ```scala
+> object SimpleCfg {
+>   def apply(c: com.typesafe.config.Config): SimpleCfg = {
+>     SimpleCfg(c.getInt("int"), c.getString("str"))
+>   }
+> }
+> ```
+
+
+Use any usual [Typesafe Config](https://github.com/typesafehub/config) 
+mechanism to load a concrete configuration, for example:
+
+```scala
+val conf = ConfigFactory.parseString(
+  """
+  int = 1
+  str = "hobbes"
+""")
+```
+
+Then, just create the wrapper and enjoy the benefits:
+
+```scala
+val cfg = SimpleCfg(conf)
+
+cfg.int  ==> 1
+cfg.str  ==> "hobbes"
+```
+
+You can also include members in the case class:
+
+```scala
+@Cfg
+case class BarCfg(
+                   reqInt : Int,
+                   reqStr : String
+                 ) {
   object foo {
     val bool  : Boolean = $
 
@@ -30,11 +72,11 @@ class BarCfg(c: com.typesafe.config.Config) {
 }
 ```
 
-Use any usual [Typesafe Config](https://github.com/typesafehub/config) 
-mechanism to load a concrete configuration, for example:
+which in particular allows to embed the specification of inner objects.
+Using the above:
 
-```scala 
-val config = ConfigFactory.parseString(
+```scala
+val bar = BarCfg(ConfigFactory.parseString(
   """
   reqInt = 9393
   reqStr = "reqStr"
@@ -45,13 +87,7 @@ val config = ConfigFactory.parseString(
       name = calvin
     }
   }
-  """)
-```
-
-Then, just create the wrapper and enjoy the benefits:
-
-```scala
-val bar = new BarCfg(conf)
+"""))
 
 bar.reqInt        ==> 9393
 bar.reqStr        ==> "reqStr"
@@ -60,11 +96,11 @@ bar.foo.baz.long  ==> 1212100
 bar.foo.baz.name  ==> "calvin"
 ```
 
-`@Cfg` also works on case classes:
+Of course, you can refer to other `@Cfg`-annotated classes: 
 
 ```scala
 @Cfg
-case class CaseCfg(
+case class OtherCfg(
                     reqInt  : Int,
                     reqStr  : String,
                     bar     : BarCfg
@@ -72,20 +108,17 @@ case class CaseCfg(
   object foo {
     val bool : Boolean = $
   }
+  val other : Long = $
 }
-```
 
-In this case, `@Cfg` generates a companion object with `apply` method expecting
-a Typesafe Config instance:
-
-```scala
-val cfg = CaseCfg(ConfigFactory.parseString(
+val cfg = OtherCfg(ConfigFactory.parseString(
   """
   reqInt = 2130
   reqStr = "reqStr"
   foo {
     bool = true
   }
+  other = 1010
   bar {
     reqInt = 9393
     reqStr = "reqStr"
@@ -97,12 +130,12 @@ val cfg = CaseCfg(ConfigFactory.parseString(
       }
     }
   }
-  """))
-
+"""))
 
 cfg.reqInt        ==> 2130
 cfg.reqStr        ==> "reqStr"
 cfg.foo.bool      ==> true
+cfg.other         ==> 1010
 
 val bar = cfg.bar
 bar.reqInt        ==> 9393
@@ -111,3 +144,12 @@ bar.foo.bool      ==> false
 bar.foo.baz.long  ==> 1212100
 bar.foo.baz.name  ==> "calvin"
 ```
+
+## TODO
+
+- default value
+- handle optional entry
+- handle list
+- Duration
+- Size-in-bytes
+- ...

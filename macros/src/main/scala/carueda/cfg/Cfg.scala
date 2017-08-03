@@ -5,21 +5,21 @@ import scala.meta._
 
 class Cfg extends scala.annotation.StaticAnnotation {
   inline def apply(defn: Any): Any = meta {
-    defn match {
-      case cls @ Defn.Class(Seq(Mod.Case()), name, _, Ctor.Primary(_, _, paramss), _) ⇒
-        CcCfgUtil.handleCaseClass(cls, name.syntax + ".$c")
+    // is there a specific api to check whether a mod is a Mod.Case()?
+    def isCase(mod: Mod): Boolean = mod.toString() == Mod.Case().toString()
 
-      case cls @ Defn.Class(_, _, _, Ctor.Primary(_, _, Seq(Seq(param))), _) ⇒
-        CfgUtil.handleClass(cls, param.name.syntax)
+    defn match {
+      case cls @ Defn.Class(mods, name, _, _, _) if mods.exists(isCase) ⇒
+        CfgUtil.handleCaseClass(cls, name.syntax + ".$c")
 
       case _ ⇒
         println(defn.structure)
-        abort("@Cfg must annotate a class")
+        abort("@Cfg must annotate a case class")
     }
   }
 }
 
-private object CcCfgUtil {
+private object CfgUtil {
 
   def handleCaseClass(cls: Defn.Class, cn: String, level: Int = 0): Term.Block = {
     val Defn.Class(
@@ -27,11 +27,12 @@ private object CcCfgUtil {
     name,
     _,
     ctor,
-    template@Template(_, _, _, Some(stats))
+    template@Template(_, _, _, statsOpt)
     ) = cls
 
     var templateStats: List[Stat] = List.empty
-    stats foreach {
+
+    for (stats ← statsOpt) stats foreach {
       case obj:Defn.Object ⇒
         templateStats :+= CfgUtil.handleObj(obj, cn, level + 1)
 
@@ -39,16 +40,26 @@ private object CcCfgUtil {
         templateStats ++= CfgUtil.handleVal(v, cn)
     }
 
-    val companion = {
-      val decl = q"private var ${Pat.Var.Term(Term.Name("$c"))}: com.typesafe.config.Config = _"
-      val applyMethod = createApply(name, ctor.paramss)
+    val hasBodyElements = templateStats.nonEmpty
 
-      q"""
-          object ${Term.Name(name.value)} {
-            $decl
-            $applyMethod
-          }
-      """
+    val companion = {
+      val applyMethod = createApply(name, ctor.paramss, hasBodyElements)
+
+      if (hasBodyElements) {
+        val decl = q"private var ${Pat.Var.Term(Term.Name("$c"))}: com.typesafe.config.Config = _"
+        q"""
+            object ${Term.Name(name.value)} {
+              $decl
+              $applyMethod
+            }
+        """
+      }
+      else
+        q"""
+            object ${Term.Name(name.value)} {
+              $applyMethod
+            }
+        """
     }
 
     Term.Block(Seq(
@@ -56,47 +67,40 @@ private object CcCfgUtil {
       companion))
   }
 
-  def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]]): Defn.Def = {
-    val args = paramss.map(_.map { param =>
-      val declType = param.decltpe.get.syntax
-      if (isBasic(declType)) {
+  def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean): Defn.Def = {
+    val args = paramss.map(_.map { param ⇒
+      val declType = param.decltpe.get
+      if (isBasic(declType.syntax)) {
         Term.Name("c.get" + declType + s"""("${param.name}")""")
       }
       else {
         val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
 
-        val constructor = Ctor.Ref.Name(param.decltpe.get.syntax)
+        val constructor = Ctor.Ref.Name(declType.syntax)
 
-        q"new $constructor($arg)"
+        q"$constructor($arg)"
       }
     })
-    q"""
-        def apply(c: com.typesafe.config.Config): $name = {
-          ${Term.Name("$c")} = c
-          ${Ctor.Ref.Name(name.value)}(...$args)
-        }
+
+    val ctor = q"${Ctor.Ref.Name(name.value)}(...$args)"
+    if (hasBodyElements)
+      q"""
+          def apply(c: com.typesafe.config.Config): $name = {
+            ${Term.Name("$c")} = c
+            $ctor
+          }
+      """
+    else
+      q"""
+          def apply(c: com.typesafe.config.Config): $name = {
+            $ctor
+          }
       """
   }
 
   private def isBasic(typ: String): Boolean =
     Set("String", "Int", "Boolean", "Double", "Long"
     ).contains(typ)
-}
-
-private object CfgUtil {
-
-  def handleClass(cls: Defn.Class, cn: String, level: Int = 0): Defn.Class = {
-    val Defn.Class(_, _, _, _, template@Template(_, _, _, Some(stats))) = cls
-    var templateStats: List[Stat] = List.empty
-    stats foreach {
-      case obj:Defn.Object ⇒
-        templateStats :+= CfgUtil.handleObj(obj, cn, level + 1)
-
-      case v:Defn.Val ⇒
-        templateStats ++= CfgUtil.handleVal(v, cn)
-    }
-    cls.copy(templ = template.copy(stats = Some(templateStats)))
-  }
 
   def handleVal(v: Defn.Val, cn: String): List[Stat] = {
     val Defn.Val(_, pats, Some(declTpe), _) = v

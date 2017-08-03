@@ -3,10 +3,16 @@ import com.typesafe.config.ConfigFactory
 import utest._
 
 @Cfg
-class BarCfg(c: com.typesafe.config.Config) {
-  val reqInt  : Int    = $
-  val reqStr  : String = $
+case class SimpleCfg(
+                   int : Int,
+                   str : String
+                 )
 
+@Cfg
+case class BarCfg(
+                   reqInt : Int,
+                   reqStr : String
+                 ) {
   object foo {
     val bool  : Boolean = $
 
@@ -18,21 +24,35 @@ class BarCfg(c: com.typesafe.config.Config) {
 }
 
 @Cfg
-case class CaseCfg(
-                    reqInt  : Int,
-                    reqStr  : String,
-                    bar     : BarCfg
-                  ) {
+case class OtherCfg(
+                     reqInt  : Int,
+                     reqStr  : String,
+                     bar     : BarCfg
+                   ) {
   object foo {
     val bool : Boolean = $
   }
+  val other : Long = $
 }
 
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
-    "BarCfg" - {
+    "SimpleCfg" - {
       val conf = ConfigFactory.parseString(
+        """
+        int = 1
+        str = "hobbes"
+      """)
+
+      val cfg = SimpleCfg(conf)
+
+      cfg.int  ==> 1
+      cfg.str  ==> "hobbes"
+    }
+
+    "BarCfg" - {
+      val bar = BarCfg(ConfigFactory.parseString(
         """
         reqInt = 9393
         reqStr = "reqStr"
@@ -43,9 +63,7 @@ object Test extends TestSuite {
             name = calvin
           }
         }
-      """)
-
-      val bar = new BarCfg(conf)
+      """))
 
       bar.reqInt        ==> 9393
       bar.reqStr        ==> "reqStr"
@@ -54,14 +72,15 @@ object Test extends TestSuite {
       bar.foo.baz.name  ==> "calvin"
     }
 
-    "CaseCfg" - {
-      val cfg = CaseCfg(ConfigFactory.parseString(
+    "OtherCfg" - {
+      val cfg = OtherCfg(ConfigFactory.parseString(
         """
         reqInt = 2130
         reqStr = "reqStr"
         foo {
           bool = true
         }
+        other = 1010
         bar {
           reqInt = 9393
           reqStr = "reqStr"
@@ -75,10 +94,10 @@ object Test extends TestSuite {
         }
       """))
 
-
       cfg.reqInt        ==> 2130
       cfg.reqStr        ==> "reqStr"
       cfg.foo.bool      ==> true
+      cfg.other         ==> 1010
 
       val bar = cfg.bar
       bar.reqInt        ==> 9393
