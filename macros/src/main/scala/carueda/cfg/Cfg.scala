@@ -3,62 +3,6 @@ package carueda.cfg
 import scala.collection.immutable.Seq
 import scala.meta._
 
-/**
-Before:
-  {{{
-  @Cfg
-  case class MyCcCfg(
-                      reqInt  : Int,
-                      reqStr  : String,
-                      bar     : Bar
-                    ) {
-
-    object foo {
-      val bool  : Boolean = ???
-    }
-  }
-
-  @Cfg
-  class Bar(c: com.typesafe.config.Config) {
-    val long : Long = ???
-
-    object baz {
-      val name : String = ???
-    }
-  }
-  }}}
-
-  After:
-  {{{
-  case class MyCcCfg(reqInt: Int, reqStr: String, bar: Bar) {
-
-    object foo {
-      private val $foo = MyCcCfg.$c.getConfig("foo")
-      val bool: Boolean = $foo.getBoolean("bool")
-    }
-
-  }
-
-  object MyCcCfg {
-    private var $c: com.typesafe.config.Config = _
-
-    def apply(c: com.typesafe.config.Config): MyCcCfg = {
-      $c = c
-      MyCcCfg(c.getInt("reqInt"), c.getString("reqStr"), new Bar(c.getConfig("bar")))
-    }
-  }
-
-  class Bar(c: com.typesafe.config.Config) {
-    val long: Long = c.getLong("long")
-
-    object baz {
-      private val $baz = c.getConfig("baz")
-      val name: String = $baz.getString("name")
-    }
-
-  }
-  }}}
-  */
 class Cfg extends scala.annotation.StaticAnnotation {
   inline def apply(defn: Any): Any = meta {
     defn match {
@@ -70,7 +14,7 @@ class Cfg extends scala.annotation.StaticAnnotation {
 
       case _ ⇒
         println(defn.structure)
-        abort("@Cfg must annotate a case class")
+        abort("@Cfg must annotate a class")
     }
   }
 }
@@ -132,27 +76,6 @@ private object CcCfgUtil {
           ${Ctor.Ref.Name(name.value)}(...$args)
         }
       """
-  }
-
-  def handleObj(obj: Defn.Object, cn: String, level: Int = 0): Stat = {
-    val Defn.Object(_, name, template@Template(_, _, _, Some(stats))) = obj
-    //println("handleObj:    " + name.structure)
-
-    var templateStats: List[Stat] = List.empty
-
-    val newCn = Pat.Var.Term(Term.Name(("$" * level) + name.syntax))
-    val getter = Term.Name(s"""$cn.getConfig("${name.syntax}")""")
-    templateStats :+= q"""private val $newCn = $getter"""
-
-    stats foreach {
-      case obj:Defn.Object ⇒
-        templateStats :+= CfgUtil.handleObj(obj, newCn.syntax, level + 1)
-
-      case v:Defn.Val ⇒
-        templateStats ++= CfgUtil.handleVal(v, newCn.syntax)
-    }
-
-    obj.copy(templ = template.copy(stats = Some(templateStats)))
   }
 
   private def isBasic(typ: String): Boolean =
