@@ -5,18 +5,16 @@ import scala.meta._
 
 class Cfg extends scala.annotation.StaticAnnotation {
   inline def apply(defn: Any): Any = meta {
-    // is there a specific api to check whether a mod is a Mod.Case()?
-    def isCase(mod: Mod): Boolean = mod.toString() == Mod.Case().toString()
-
     defn match {
-      case Term.Block(Seq(cls @ Defn.Class(_, name, _, _, _), companion: Defn.Object)) =>
+      case Term.Block(Seq(cls @ Defn.Class(mods, name, _, _, _),
+           companion: Defn.Object)) if mods.exists(_.is[Mod.Case]) ⇒
         CfgUtil.handleCaseClass(cls, name.syntax + ".$c", Some(companion))
 
-      case cls @ Defn.Class(mods, name, _, _, _) if mods.exists(isCase) ⇒
+      case cls @ Defn.Class(mods, name, _, _, _) if mods.exists(_.is[Mod.Case]) ⇒
         CfgUtil.handleCaseClass(cls, name.syntax + ".$c")
 
       case _ ⇒
-        println(defn.structure)
+        //println(defn.structure)
         abort("@Cfg must annotate a case class")
     }
   }
@@ -77,7 +75,7 @@ private object CfgUtil {
       newCompanion))
   }
 
-  def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean): Defn.Def = {
+  private def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean): Defn.Def = {
     def getGetter(param: Term.Param): Term = {
       val declType = param.decltpe.get
       if (isBasic(declType.syntax)) {
@@ -107,7 +105,7 @@ private object CfgUtil {
       """
   }
 
-  def handleVal(v: Defn.Val, cn: String): List[Stat] = {
+  private def handleVal(v: Defn.Val, cn: String): List[Stat] = {
     val Defn.Val(_, pats, Some(declTpe), _) = v
     //println("handleVal:    " + pats.structure + "   declTpe=" + declTpe.structure)
 
@@ -131,7 +129,7 @@ private object CfgUtil {
     templateStats
   }
 
-  def handleObj(obj: Defn.Object, cn: String, level: Int = 0): Stat = {
+  private def handleObj(obj: Defn.Object, cn: String, level: Int = 0): Stat = {
     val Defn.Object(_, name, template@Template(_, _, _, Some(stats))) = obj
     //println("handleObj:    " + name.structure)
 
