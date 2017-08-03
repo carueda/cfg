@@ -64,18 +64,26 @@ case class BarCfg(
                    reqStr : String
                  ) {
   object foo {
-    val bool  : Boolean = $
+    val bool : Boolean = $
 
     object baz {
       val long : Long = $
-      val name : String = $
+      val name : String = "Calvin"
     }
   }
 }
 ```
 
-which in particular allows to embed the specification of inner objects.
-Using the above:
+which, in particular, allows to directly embed the specification of inner objects
+without necessarily having to introduce a class for them.
+
+The `$` is a placeholder that gets replaced with appropriate extraction logic by
+the macro. A concrete initialization value (`"Calvin"` for the `name` entry above)
+indicates that the entry is optional, with the given value as the default.
+
+> Note: this mechanism is not implemented yet.
+
+Using `BarCfg`:
 
 ```scala
 val bar = BarCfg(ConfigFactory.parseString(
