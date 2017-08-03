@@ -3,9 +3,9 @@
 # `@Cfg` 
 
 `@Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper that allows to: 
-- specify the configuration of your application or library using regular case classes;
+- specify the configuration of your application or library using case classes and inner vals and objects;
 - access concrete configurations in a type-safe manner while enjoying the code 
-  completion and navigation capabilities of your IDE. 
+  completion, navigation, and refactoring capabilities of your IDE. 
 
 `@Cfg` is implemented using a [Scalameta](http://scalameta.org/). 
 
@@ -63,11 +63,12 @@ case class BarCfg(
                    reqInt : Int,
                    reqStr : String
                  ) {
+  val long : Long = $
+
   object foo {
     val bool : Boolean = $
 
     object baz {
-      val long : Long = $
       val name : String = "Calvin"
     }
   }

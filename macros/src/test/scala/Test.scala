@@ -13,11 +13,13 @@ case class BarCfg(
                    reqInt : Int,
                    reqStr : String
                  ) {
+
+  val long : Long = $
+
   object foo {
     val bool  : Boolean = $
 
     object baz {
-      val long : Long = $
       val name : String = $
     }
   }
@@ -67,10 +69,10 @@ object Test extends TestSuite {
         """
         reqInt = 9393
         reqStr = "reqStr"
+        long = 1212100
         foo {
           bool = false
           baz {
-            long = 1212100
             name = calvin
           }
         }
@@ -78,8 +80,8 @@ object Test extends TestSuite {
 
       bar.reqInt        ==> 9393
       bar.reqStr        ==> "reqStr"
+      bar.long          ==> 1212100
       bar.foo.bool      ==> false
-      bar.foo.baz.long  ==> 1212100
       bar.foo.baz.name  ==> "calvin"
     }
 
@@ -95,10 +97,10 @@ object Test extends TestSuite {
         bar {
           reqInt = 9393
           reqStr = "reqStr"
+          long = 1212100
           foo {
             bool = false
             baz {
-              long = 1212100
               name = calvin
             }
           }
@@ -117,8 +119,8 @@ object Test extends TestSuite {
       val bar = cfg.bar
       bar.reqInt        ==> 9393
       bar.reqStr        ==> "reqStr"
+      bar.long          ==> 1212100
       bar.foo.bool      ==> false
-      bar.foo.baz.long  ==> 1212100
       bar.foo.baz.name  ==> "calvin"
 
       cfg.simple.int    ==> 0
