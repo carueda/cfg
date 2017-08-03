@@ -78,20 +78,19 @@ private object CfgUtil {
   }
 
   def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean): Defn.Def = {
-    val args = paramss.map(_.map { param ⇒
+    def getGetter(param: Term.Param): Term = {
       val declType = param.decltpe.get
       if (isBasic(declType.syntax)) {
         Term.Name("c.get" + declType + s"""("${param.name}")""")
       }
       else {
         val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
-
         val constructor = Ctor.Ref.Name(declType.syntax)
-
         q"$constructor($arg)"
       }
-    })
+    }
 
+    val args = paramss.map(_.map(getGetter))
     val ctor = q"${Ctor.Ref.Name(name.value)}(...$args)"
     if (hasBodyElements)
       q"""
@@ -108,17 +107,25 @@ private object CfgUtil {
       """
   }
 
-  private def isBasic(typ: String): Boolean =
-    Set("String", "Int", "Boolean", "Double", "Long"
-    ).contains(typ)
-
   def handleVal(v: Defn.Val, cn: String): List[Stat] = {
     val Defn.Val(_, pats, Some(declTpe), _) = v
     //println("handleVal:    " + pats.structure + "   declTpe=" + declTpe.structure)
+
+    def getGetter(name: String): Term = {
+      if (isBasic(declTpe.syntax)) {
+        Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
+      }
+      else {
+        val arg = Term.Name(s"""$cn.getConfig("$name")""")
+        val constructor = Ctor.Ref.Name(declTpe.syntax)
+        q"$constructor($arg)"
+      }
+    }
+
     var templateStats: List[Stat] = List.empty
     pats foreach {
       case t@Pat.Var.Term(Term.Name(name)) ⇒
-        val getter = Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
+        val getter = getGetter(name)
         templateStats :+= q"""val $t: $declTpe = $getter"""
     }
     templateStats
@@ -144,4 +151,8 @@ private object CfgUtil {
 
     obj.copy(templ = template.copy(stats = Some(templateStats)))
   }
+
+  private def isBasic(typ: String): Boolean =
+    Set("String", "Int", "Boolean", "Double", "Long"
+    ).contains(typ)
 }

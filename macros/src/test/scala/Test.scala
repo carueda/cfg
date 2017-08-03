@@ -29,6 +29,7 @@ case class OtherCfg(
                      reqStr  : String,
                      bar     : BarCfg
                    ) {
+  val simple : SimpleCfg = $
   object foo {
     val bool : Boolean = $
   }
@@ -102,6 +103,10 @@ object Test extends TestSuite {
             }
           }
         }
+        simple {
+          int = 0
+          str = "aha"
+        }
       """))
 
       cfg.reqInt        ==> 2130
@@ -115,6 +120,9 @@ object Test extends TestSuite {
       bar.foo.bool      ==> false
       bar.foo.baz.long  ==> 1212100
       bar.foo.baz.name  ==> "calvin"
+
+      cfg.simple.int    ==> 0
+      cfg.simple.str    ==> "aha"
     }
     
     "CompanionCfg" - {
