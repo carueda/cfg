@@ -26,7 +26,7 @@ case class BarCfg(
 }
 
 @Cfg
-case class OtherCfg(
+case class WithOtherCfg(
                      reqInt  : Int,
                      reqStr  : String,
                      bar     : BarCfg
@@ -85,8 +85,8 @@ object Test extends TestSuite {
       bar.foo.baz.name  ==> "calvin"
     }
 
-    "OtherCfg" - {
-      val cfg = OtherCfg(ConfigFactory.parseString(
+    "WithOtherCfg" - {
+      val cfg = WithOtherCfg(ConfigFactory.parseString(
         """
         reqInt = 2130
         reqStr = "reqStr"

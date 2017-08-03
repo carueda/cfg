@@ -111,7 +111,7 @@ Of course, you can refer to other `@Cfg`-annotated classes:
 
 ```scala
 @Cfg
-case class OtherCfg(
+case class WithOtherCfg(
                     reqInt  : Int,
                     reqStr  : String,
                     bar     : BarCfg
@@ -122,7 +122,7 @@ case class OtherCfg(
   val other : Long = $
 }
 
-val cfg = OtherCfg(ConfigFactory.parseString(
+val cfg = WithOtherCfg(ConfigFactory.parseString(
   """
   reqInt = 2130
   reqStr = "reqStr"
