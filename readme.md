@@ -155,7 +155,6 @@ bar.foo.baz.who   ==> "Calvin"
 
 ## TODO
 
-- handle optional entry
 - handle list
 - Duration
 - Size-in-bytes

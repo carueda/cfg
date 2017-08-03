@@ -77,17 +77,26 @@ private object CfgUtil {
 
   private def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean): Defn.Def = {
     def getGetter(param: Term.Param): Term = {
+      // condition in case of with-default or Option:
+      val cond = Term.Name(s"""c.hasPath("${param.name}")""")
+
       val declType = param.decltpe.get
       //println("createApply: " +name+ "::" +param.name+
       // " declType = " + declType.syntax + " param.default=" +param.default)
 
-      val actualGetter: Term = if (isBasic(declType.syntax)) {
-        Term.Name("c.get" + declType + s"""("${param.name}")""")
-      }
-      else {
-        val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
-        val constructor = Ctor.Ref.Name(declType.syntax)
-        q"$constructor($arg)"
+      val actualGetter: Term = {
+        if (isBasic(declType.syntax)) {
+          Term.Name("c.get" + declType + s"""("${param.name}")""")
+        }
+        else isOptionOf(declType) match {
+          case Some(typ) ⇒
+            q"""if ($cond) Some(${basicOrObjectGetter("c", param.name.syntax, typ)}) else None"""
+
+          case None ⇒
+            val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
+            val constructor = Ctor.Ref.Name(declType.syntax)
+            q"$constructor($arg)"
+        }
       }
 
       param.default match {
@@ -95,7 +104,6 @@ private object CfgUtil {
           actualGetter
 
         case Some(default) ⇒
-          val cond = Term.Name(s"""c.hasPath("${param.name}")""")
           q"""if ($cond) $actualGetter else $default"""
       }
     }
@@ -123,20 +131,27 @@ private object CfgUtil {
     //println("handleVal: cn=" +cn+ "  " + pats.structure +
     // " declTpe=" + declTpe.structure + "  rhs=" + rhs)
 
-    def getGetter(name: String): Term = {
-      val actualGetter: Term = if (isBasic(declTpe.syntax)) {
-        Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
-      }
-      else {
-        val arg = Term.Name(s"""$cn.getConfig("$name")""")
-        val constructor = Ctor.Ref.Name(declTpe.syntax)
-        q"$constructor($arg)"
+    def getGetter(t: Pat.Var.Term, name: String): Term = {
+      val cond = Term.Name(cn + s""".hasPath("$name")""")
+
+      val actualGetter: Term = {
+        if (isBasic(declTpe.syntax)) {
+          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
+        }
+        else isOptionOf(declTpe) match {
+          case Some(typ) ⇒
+            q"""if ($cond) Some(${basicOrObjectGetter(cn, name, typ)}) else None"""
+
+          case None ⇒
+            val arg = Term.Name(s"""$cn.getConfig("$name")""")
+            val constructor = Ctor.Ref.Name(declTpe.syntax)
+            q"$constructor($arg)"
+        }
       }
 
       if (rhs.syntax == "$")
         actualGetter
       else {
-        val cond = Term.Name(cn + s""".hasPath("$name")""")
         q"""if ($cond) $actualGetter else $rhs"""
       }
     }
@@ -144,10 +159,24 @@ private object CfgUtil {
     var templateStats: List[Stat] = List.empty
     pats foreach {
       case t@Pat.Var.Term(Term.Name(name)) ⇒
-        val getter = getGetter(name)
+        val getter = getGetter(t, name)
         templateStats :+= q"""val $t: $declTpe = $getter"""
     }
     templateStats
+  }
+
+  private def basicOrObjectGetter(cn: String, name: String, typ: Type): Term = {
+    if (isBasic(typ.syntax)) {
+      Term.Name(cn + ".get" + typ + s"""("$name")""")
+    }
+    else if (isOptionOf(typ).isDefined) {
+      abort("Option only valid at first level in the type: " + name)
+    }
+    else {
+      val arg = Term.Name(cn + s""".getConfig("$name")""")
+      val constructor = Ctor.Ref.Name(typ.syntax)
+      q"$constructor($arg)"
+    }
   }
 
   private def handleObj(obj: Defn.Object, cn: String, level: Int = 0): Stat = {
@@ -174,4 +203,11 @@ private object CfgUtil {
   private def isBasic(typ: String): Boolean =
     Set("String", "Int", "Boolean", "Double", "Long"
     ).contains(typ)
+
+  private def isOptionOf(typ: Type.Arg): Option[Type] = typ match {
+    case Type.Apply(Type.Name("Option"), Seq(of)) ⇒
+      Some(of)
+
+    case _ ⇒ None
+  }
 }

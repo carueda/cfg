@@ -54,6 +54,16 @@ case class WithDefaultCfg(
                       str : String = "someStr"
                     )
 
+@Cfg
+case class WithOptCfg(
+                      int    : Option[Int],
+                      str    : Option[String],
+                      simple : Option[SimpleCfg]
+                    ) {
+
+  val simple2: Option[SimpleCfg] = $
+}
+
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
@@ -147,6 +157,22 @@ object Test extends TestSuite {
       val cfg = WithDefaultCfg(conf)
       cfg.int  ==> 21
       cfg.str  ==> "someStr"
+    }
+
+    "WithOptCfg" - {
+      val conf = ConfigFactory.parseString(
+        """
+          int =  8
+          simple2 {
+            int = 1
+            str = str
+          }
+        """.stripMargin)
+      val cfg = WithOptCfg(conf)
+      cfg.int     ==> Some(8)
+      cfg.str     ==> None
+      cfg.simple  ==> None
+      cfg.simple2 ==> Some(SimpleCfg(1, "str"))
     }
   }
 }
