@@ -9,6 +9,9 @@ class Cfg extends scala.annotation.StaticAnnotation {
     def isCase(mod: Mod): Boolean = mod.toString() == Mod.Case().toString()
 
     defn match {
+      case Term.Block(Seq(cls @ Defn.Class(_, name, _, _, _), companion: Defn.Object)) =>
+        CfgUtil.handleCaseClass(cls, name.syntax + ".$c", Some(companion))
+
       case cls @ Defn.Class(mods, name, _, _, _) if mods.exists(isCase) ⇒
         CfgUtil.handleCaseClass(cls, name.syntax + ".$c")
 
@@ -21,7 +24,8 @@ class Cfg extends scala.annotation.StaticAnnotation {
 
 private object CfgUtil {
 
-  def handleCaseClass(cls: Defn.Class, cn: String, level: Int = 0): Term.Block = {
+  def handleCaseClass(cls: Defn.Class, cn: String,
+                      companionOpt: Option[Defn.Object] = None, level: Int = 0): Term.Block = {
     val Defn.Class(
     _,
     name,
@@ -41,30 +45,36 @@ private object CfgUtil {
     }
 
     val hasBodyElements = templateStats.nonEmpty
+    val applyMethod = createApply(name, ctor.paramss, hasBodyElements)
+    val decl = q"private var ${Pat.Var.Term(Term.Name("$c"))}: com.typesafe.config.Config = _"
 
-    val companion = {
-      val applyMethod = createApply(name, ctor.paramss, hasBodyElements)
+    val newCompanion = companionOpt match {
+      case None ⇒
+        if (hasBodyElements)
+          q"""
+              object ${Term.Name(name.value)} {
+                $decl
+                $applyMethod
+              }
+          """
+        else
+          q"""
+              object ${Term.Name(name.value)} {
+                $applyMethod
+              }
+          """
 
-      if (hasBodyElements) {
-        val decl = q"private var ${Pat.Var.Term(Term.Name("$c"))}: com.typesafe.config.Config = _"
-        q"""
-            object ${Term.Name(name.value)} {
-              $decl
-              $applyMethod
-            }
-        """
-      }
-      else
-        q"""
-            object ${Term.Name(name.value)} {
-              $applyMethod
-            }
-        """
+      case Some(companion) ⇒
+        var newStats: List[Stat] = List(applyMethod)
+        if (hasBodyElements)
+          newStats = decl +: newStats
+        val stats: Seq[Stat] = newStats ++ companion.templ.stats.getOrElse(Nil)
+        companion.copy(templ = companion.templ.copy(stats = Some(stats)))
     }
 
     Term.Block(Seq(
       cls.copy(templ = template.copy(stats = Some(templateStats))),
-      companion))
+      newCompanion))
   }
 
   def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean): Defn.Def = {

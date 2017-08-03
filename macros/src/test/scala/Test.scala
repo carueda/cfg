@@ -35,6 +35,16 @@ case class OtherCfg(
   val other : Long = $
 }
 
+@Cfg
+case class CompanionCfg(str : String) {
+  val h: Int = $
+}
+object CompanionCfg {
+  val xyz: String = "whatever"
+  def apply(zyx: Int): Option[Any] = None
+}
+
+
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
@@ -105,6 +115,17 @@ object Test extends TestSuite {
       bar.foo.bool      ==> false
       bar.foo.baz.long  ==> 1212100
       bar.foo.baz.name  ==> "calvin"
+    }
+    
+    "CompanionCfg" - {
+      val conf = ConfigFactory.parseString(
+        """
+          |str = hobbes
+          |h = 9
+        """.stripMargin)
+      val cfg = CompanionCfg(conf)
+      cfg.str  ==> "hobbes"
+      cfg.h    ==> 9
     }
   }
 }

@@ -2,10 +2,12 @@
 
 # `@Cfg` 
 
-`@Cfg` is a [Scalameta](http://scalameta.org/)-based annotation that allows to
-specify the configuration of your application or library such that concrete configurations 
-can be loaded and used while enjoying full type safety and the code completion and navigation 
-capabilities of your IDE.
+`@Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper that allows to: 
+- specify the configuration of your application or library using regular case classes;
+- access concrete configurations in a type-safe manner while enjoying the code 
+  completion and navigation capabilities of your IDE. 
+
+`@Cfg` is implemented using a [Scalameta](http://scalameta.org/). 
 
 WIP
 
@@ -21,9 +23,9 @@ case class SimpleCfg(
                  )
 ```
 
-The macro generates a companion object with `apply` method expecting
-a Typesafe Config instance:
-
+> The annotation generates a companion object with `apply` method expecting
+> a `com.typesafe.config.Config` instance:
+> 
 > ```scala
 > object SimpleCfg {
 >   def apply(c: com.typesafe.config.Config): SimpleCfg = {
