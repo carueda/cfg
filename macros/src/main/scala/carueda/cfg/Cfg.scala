@@ -91,14 +91,6 @@ private object CfgUtil {
         case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
           val argArg = Lit(param.name.syntax)
 
-//          val arg = q"""c.getAnyRefList($argArg).asScala.toList.map(_.asInstanceOf[$argType])"""
-//          q"""{
-//              import scala.collection.JavaConverters._
-//              $arg
-//              }
-//          """
-
-
           val listElement = listElementAccessor(argType)
           val arg = argType match {
             case Type.Apply(Type.Name("List"), _) ⇒
@@ -106,20 +98,17 @@ private object CfgUtil {
 
             case _ ⇒
               q"""c.getAnyRefList($argArg).asScala.toList.map($listElement)"""
-
           }
-
           q"""{
               import scala.collection.JavaConverters._
               $arg
               }
           """
 
-
-
-
-
         case _ if isBasic(declType.syntax) ⇒
+          Term.Name("c.get" + declType + s"""("${param.name}")""")
+
+        case _ if declType.syntax == "Duration" ⇒
           Term.Name("c.get" + declType + s"""("${param.name}")""")
 
         case _ ⇒
@@ -174,6 +163,9 @@ private object CfgUtil {
       case _ if isBasic(elementType.syntax) ⇒
         Term.Name(s"""_.asInstanceOf[$elementType]""")
 
+      case _ if elementType.syntax == "Duration" ⇒
+        q"""v => com.typesafe.config.ConfigFactory.parseString(s"d = $$v").getDuration("d")"""
+
       case _ ⇒
         val constructor = Ctor.Ref.Name(elementType.syntax)
         q"h => $constructor($hashMapToConfig)"
@@ -214,6 +206,9 @@ private object CfgUtil {
         case _ if isBasic(declTpe.syntax) ⇒
           Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
 
+        case _ if declTpe.syntax == "Duration" ⇒
+          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
+
         case _ ⇒
           val arg = Term.Name(s"""$cn.getConfig("$name")""")
           val constructor = Ctor.Ref.Name(declTpe.syntax)
@@ -244,6 +239,9 @@ private object CfgUtil {
       abort("TODO List of " +argType+ "  : " + name)
 
     case _ if isBasic(typ.syntax) ⇒
+      Term.Name(cn + ".get" + typ + s"""("$name")""")
+
+    case _ if typ.syntax == "Duration" ⇒
       Term.Name(cn + ".get" + typ + s"""("$name")""")
 
     case _ ⇒

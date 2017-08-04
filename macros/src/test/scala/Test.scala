@@ -1,3 +1,5 @@
+import java.time.Duration
+
 import carueda.cfg._
 import com.typesafe.config.ConfigFactory
 import utest._
@@ -75,6 +77,18 @@ case class WithListCfg(
   val strss   : List[List[String]] = $
   val strsss  : List[List[List[String]]] = $
   val simples2: List[SimpleCfg] = $
+}
+
+@Cfg
+case class WithDurationCfg(
+                      dur    : Duration
+                      ,durOpt : Option[Duration]
+                      ,durs   : List[Duration]
+                    ) {
+
+  val dur1    : Duration = $
+  val durOpt1 : Option[Duration] = $
+  val durs1   : List[Duration] = $
 }
 
 object Test extends TestSuite {
@@ -243,6 +257,24 @@ object Test extends TestSuite {
         SimpleCfg(2, "2"),
         SimpleCfg(3, "3")
       )
+    }
+
+    "WithDurationCfg" - {
+      val conf = ConfigFactory.parseString(
+        """
+          dur = 6h
+          durs = [ 3600s, 1d ]
+          dur1 = 3s
+          durOpt1 = 3h
+          durs1 = [ 120m ]
+        """.stripMargin)
+      val cfg = WithDurationCfg(conf)
+      cfg.dur.toHours  ==> 6
+      cfg.durOpt ==> None
+      cfg.durs.map(_.toHours)  ==> List(1, 24)
+      cfg.dur1.toMillis ==> 3000
+      cfg.durOpt1.map(_.toMinutes) ==> Some(180)
+      cfg.durs1.map(_.toHours)  ==> List(2)
     }
   }
 }

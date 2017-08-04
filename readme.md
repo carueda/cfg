@@ -7,7 +7,7 @@
 - access concrete configurations in a type-safe manner while enjoying the code 
   completion, navigation, and refactoring capabilities of your IDE. 
 
-`@Cfg` is implemented using a [Scalameta](http://scalameta.org/). 
+`@Cfg` is implemented using [Scalameta](http://scalameta.org/). 
 
 WIP
 
@@ -35,7 +35,7 @@ case class SimpleCfg(
 > ```
 
 
-Use any usual [Typesafe Config](https://github.com/typesafehub/config) 
+Use any usual Typesafe Config 
 mechanism to load a concrete configuration, for example:
 
 ```scala
@@ -268,8 +268,39 @@ cfg.simples2 ==> List(
 )
 ```
 
+### Duration
+
+```scala
+@Cfg
+case class WithDurationCfg(
+                      dur    : Duration
+                      ,durOpt : Option[Duration]
+                      ,durs   : List[Duration]
+                    ) {
+
+  val dur1    : Duration = $
+  val durOpt1 : Option[Duration] = $
+  val durs1   : List[Duration] = $
+}
+
+val conf = ConfigFactory.parseString(
+  """
+    dur = 6h
+    durs = [ 3600s, 1d ]
+    dur1 = 3s
+    durOpt1 = 3h
+    durs1 = [ 120m ]
+  """.stripMargin)
+val cfg = WithDurationCfg(conf)
+cfg.dur.toHours  ==> 6
+cfg.durOpt ==> None
+cfg.durs.map(_.toHours)  ==> List(1, 24)
+cfg.dur1.toMillis ==> 3000
+cfg.durOpt1.map(_.toMinutes) ==> Some(180)
+cfg.durs1.map(_.toHours)  ==> List(2)
+```
+
 ## TODO
 
-- Duration
 - Size-in-bytes
 - ...
