@@ -2,14 +2,19 @@
 
 # `@Cfg` 
 
+Implemented using [Scalameta](http://scalameta.org/), 
 `@Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper that allows to: 
 - specify the configuration of your application or library using case classes and inner vals and objects;
 - access concrete configurations in a type-safe manner while enjoying the code 
   completion, navigation, and refactoring capabilities of your IDE. 
+ 
+`$Cfg` supports all types handled by Typesafe Config, which, in Scala, are
+simply represented with the standard types  
+`String`, `Int`, `Long`, `Double`, `Boolean`, `java.time.Duration`, 
+`Bytes` (alias for `Long`), 
+along with `Option[T]` to represent optional configuration entries, 
+and `List[T]` (where `T` is, recursively, any supported type). 
 
-`@Cfg` is implemented using [Scalameta](http://scalameta.org/). 
-
-WIP
 
 ## Usage
 
@@ -300,7 +305,36 @@ cfg.durOpt1.map(_.toMinutes) ==> Some(180)
 cfg.durs1.map(_.toHours)  ==> List(2)
 ```
 
-## TODO
+### Size-in-bytes
 
-- Size-in-bytes
-- ...
+To differentiate this type from `Long`, use the alias `Bytes`:
+
+```scala
+@Cfg
+case class WithBytesCfg(
+                      size    : Bytes,
+                      sizeOpt : Option[Bytes],
+                      sizes   : List[Bytes]
+                    ) {
+
+  val size1    : Bytes = $
+  val sizeOpt1 : Option[Bytes] = $
+  val sizes1   : List[Bytes] = $
+}
+
+val conf = ConfigFactory.parseString(
+  """
+    size = 2048K
+    sizes = [ 1000, "64G", "16kB" ]
+    size1 = 64G
+    sizeOpt1 = 1kB
+    sizes1 = [ 512 ]
+  """.stripMargin)
+val cfg = WithBytesCfg(conf)
+cfg.size     ==> 2048*1024
+cfg.sizeOpt  ==> None
+cfg.sizes    ==> List(1000, 64*1024*1024*1024L, 16*1000)
+cfg.size1    ==> 64*1024*1024*1024L
+cfg.sizeOpt1 ==> Some(1000)
+cfg.sizes1   ==> List(512)
+```

@@ -91,6 +91,18 @@ case class WithDurationCfg(
   val durs1   : List[Duration] = $
 }
 
+@Cfg
+case class WithBytesCfg(
+                      size    : Bytes,
+                      sizeOpt : Option[Bytes],
+                      sizes   : List[Bytes]
+                    ) {
+
+  val size1    : Bytes = $
+  val sizeOpt1 : Option[Bytes] = $
+  val sizes1   : List[Bytes] = $
+}
+
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
@@ -275,6 +287,24 @@ object Test extends TestSuite {
       cfg.dur1.toMillis ==> 3000
       cfg.durOpt1.map(_.toMinutes) ==> Some(180)
       cfg.durs1.map(_.toHours)  ==> List(2)
+    }
+
+    "WithSizeInBytesCfg" - {
+      val conf = ConfigFactory.parseString(
+        """
+          size = 2048K
+          sizes = [ 1000, "64G", "16kB" ]
+          size1 = 64G
+          sizeOpt1 = 1kB
+          sizes1 = [ 512 ]
+        """.stripMargin)
+      val cfg = WithBytesCfg(conf)
+      cfg.size     ==> 2048*1024
+      cfg.sizeOpt  ==> None
+      cfg.sizes    ==> List(1000, 64*1024*1024*1024L, 16*1000)
+      cfg.size1    ==> 64*1024*1024*1024L
+      cfg.sizeOpt1 ==> Some(1000)
+      cfg.sizes1   ==> List(512)
     }
   }
 }

@@ -111,6 +111,9 @@ private object CfgUtil {
         case _ if declType.syntax == "Duration" ⇒
           Term.Name("c.get" + declType + s"""("${param.name}")""")
 
+        case _ if declType.syntax == "Bytes" ⇒
+          Term.Name("c.get" + declType + s"""("${param.name}")""")
+
         case _ ⇒
           val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
           val constructor = Ctor.Ref.Name(declType.syntax)
@@ -166,6 +169,9 @@ private object CfgUtil {
       case _ if elementType.syntax == "Duration" ⇒
         q"""v => com.typesafe.config.ConfigFactory.parseString(s"d = $$v").getDuration("d")"""
 
+      case _ if elementType.syntax == "Bytes" ⇒
+        q"""v => com.typesafe.config.ConfigFactory.parseString(s"d = $$v").getBytes("d").asInstanceOf[Bytes]"""
+
       case _ ⇒
         val constructor = Ctor.Ref.Name(elementType.syntax)
         q"h => $constructor($hashMapToConfig)"
@@ -209,6 +215,9 @@ private object CfgUtil {
         case _ if declTpe.syntax == "Duration" ⇒
           Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
 
+        case _ if declTpe.syntax == "Bytes" ⇒
+          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
+
         case _ ⇒
           val arg = Term.Name(s"""$cn.getConfig("$name")""")
           val constructor = Ctor.Ref.Name(declTpe.syntax)
@@ -242,6 +251,9 @@ private object CfgUtil {
       Term.Name(cn + ".get" + typ + s"""("$name")""")
 
     case _ if typ.syntax == "Duration" ⇒
+      Term.Name(cn + ".get" + typ + s"""("$name")""")
+
+    case _ if typ.syntax == "Bytes" ⇒
       Term.Name(cn + ".get" + typ + s"""("$name")""")
 
     case _ ⇒
