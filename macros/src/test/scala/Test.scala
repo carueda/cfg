@@ -42,12 +42,19 @@ case class WithOtherCfg(
 }
 
 @Cfg
-case class CompanionCfg(str : String) {
+case class CompanionCfg(strs : List[String]) {
   val h: Int = $
 }
 object CompanionCfg {
   val xyz: String = "whatever"
-  def apply(zyx: Int): Option[Any] = None
+}
+
+@Cfg
+case class Companion2Cfg(str : String) {
+  val hs: List[Int] = $
+}
+object Companion2Cfg {
+  def apply(): Unit = ()
 }
 
 @Cfg
@@ -183,12 +190,23 @@ object Test extends TestSuite {
     "CompanionCfg" - {
       val conf = ConfigFactory.parseString(
         """
-          |str = Hobbes
+          |strs = [ Calvin, Hobbes ]
           |h = 9
         """.stripMargin)
       val cfg = CompanionCfg(conf)
-      cfg.str  ==> "Hobbes"
+      cfg.strs  ==> List("Calvin", "Hobbes")
       cfg.h    ==> 9
+    }
+
+    "Companion2Cfg" - {
+      val conf = ConfigFactory.parseString(
+        """
+          |str = Calvin
+          |hs = [9, 3]
+        """.stripMargin)
+      val cfg = Companion2Cfg(conf)
+      cfg.str ==> "Calvin"
+      cfg.hs  ==> List(9, 3)
     }
 
     "WithDefaultCfg" - {
