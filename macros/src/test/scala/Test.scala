@@ -31,6 +31,16 @@ case class BarCfg(
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
+    "ExampleCfg" - {
+      @Cfg
+      case class ExampleCfg(num: Int, str: String = "foo", dur: Option[Duration])
+
+      val cfg = ExampleCfg(ConfigFactory.parseString("num = 1"))
+      assert( cfg.num == 1 )
+      assert( cfg.str == "foo" )
+      assert( cfg.dur.isEmpty )
+    }
+
     "SimpleCfg" - {
       val conf = ConfigFactory.parseString(
         """

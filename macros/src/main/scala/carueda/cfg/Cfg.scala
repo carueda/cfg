@@ -3,6 +3,24 @@ package carueda.cfg
 import scala.collection.immutable.Seq
 import scala.meta._
 
+/**
+  * This annotation allows to specify the schema of your application or library
+  * configuration using plain old case classes and inner vals and objects.
+  * It generates an `apply(c: com.typesafe.config.Config)` method in the companion
+  * object to instantiate your case class with a given Typesafe Config object.
+  * <br>
+  * <br>
+  * Example:
+  * {{{
+  * @ Cfg
+  * case class ExampleCfg(num: Int, str: String = "foo", dur: Option[Duration])
+  * ...
+  * val cfg = ExampleCfg(ConfigFactory.parseString("num = 1"))
+  * assert( cfg.num == 1 )
+  * assert( cfg.str == "foo" )
+  * assert( cfg.dur.isEmpty )
+  * }}}
+  */
 class Cfg extends scala.annotation.StaticAnnotation {
   inline def apply(defn: Any): Any = meta {
     defn match {
@@ -22,14 +40,10 @@ class Cfg extends scala.annotation.StaticAnnotation {
 
 private object CfgUtil {
   def handleCaseClass(cls: Defn.Class, cn: String,
-                      companionOpt: Option[Defn.Object] = None): Term.Block = {
-    new CfgUtil().handleCaseClass(cls, cn, companionOpt)
-  }
-}
+                      companionOpt: Option[Defn.Object] = None,
+                      level: Int = 0
+                     ): Term.Block = {
 
-private class CfgUtil {
-  private def handleCaseClass(cls: Defn.Class, cn: String,
-                      companionOpt: Option[Defn.Object] = None, level: Int = 0): Term.Block = {
     val Defn.Class(
     _,
     name,
@@ -40,29 +54,29 @@ private class CfgUtil {
 
     var templateStats: List[Stat] = List.empty
 
-    var clsNeedConverters = false
+    var clsNeedJavaConverters = false
 
     for (stats ← statsOpt) stats foreach {
       case obj:Defn.Object ⇒
         val (stat, nc) = handleObj(obj, cn, level + 1)
         templateStats :+= stat
-        clsNeedConverters = clsNeedConverters || nc
+        clsNeedJavaConverters = clsNeedJavaConverters || nc
 
       case v:Defn.Val ⇒
         val (stats, nc) = handleVal(v, cn)
         templateStats ++= stats
-        clsNeedConverters = clsNeedConverters || nc
+        clsNeedJavaConverters = clsNeedJavaConverters || nc
     }
 
     val hasBodyElements = templateStats.nonEmpty
     val (applyMethod, objNeedConverters) = createApply(name, ctor.paramss, hasBodyElements)
-    val decl = q"private var ${Pat.Var.Term(Term.Name("$c"))}: com.typesafe.config.Config = _"
+    val decl = q"private var ${Pat.Var.Term(Term.Name("$c"))}: _root_.com.typesafe.config.Config = _"
 
     val newCompanion = companionOpt match {
       case None ⇒
         var stats: List[Stat] = List.empty
         if (objNeedConverters)
-          stats :+= javaConverters
+          stats :+= importJavaConverters
         if (hasBodyElements)
           stats :+= decl
         stats :+= applyMethod
@@ -74,7 +88,7 @@ private class CfgUtil {
       case Some(companion) ⇒
         var newStats: List[Stat] = List.empty
         if (objNeedConverters)
-          newStats :+= javaConverters
+          newStats :+= importJavaConverters
         if (hasBodyElements)
           newStats :+= decl
         newStats :+= applyMethod
@@ -82,52 +96,46 @@ private class CfgUtil {
         companion.copy(templ = companion.templ.copy(stats = Some(stats)))
     }
 
-    val clsStats = if (clsNeedConverters) javaConverters :: templateStats else templateStats
+    val clsStats = if (clsNeedJavaConverters) importJavaConverters :: templateStats else templateStats
 
     Term.Block(Seq(
       cls.copy(templ = template.copy(stats = Some(clsStats))),
       newCompanion))
   }
 
-  private val javaConverters = q"import scala.collection.JavaConverters._"
-
-  private def createApply(name: Type.Name, paramss: Seq[Seq[Term.Param]], hasBodyElements: Boolean
+  private def createApply(name: Type.Name,
+                          paramss: Seq[Seq[Term.Param]],
+                          hasBodyElements: Boolean
                          ): (Defn.Def, Boolean) = {
 
-    var needConverters = false
+    var needJavaConverters = false
 
     def getGetter(param: Term.Param): Term = {
       // condition in case of with-default or Option:
       val cond = Term.Name(s"""c.hasPath("${param.name}")""")
 
       val declType = param.decltpe.get
-      //println("createApply: " +name+ "::" +param.name+
-      // " declType = " + declType.syntax + " param.default=" +param.default)
 
       val actualGetter: Term = declType match {
         case Type.Apply(Type.Name("Option"), Seq(typ)) ⇒
           q"""if ($cond) Some(${basicOrObjectGetter("c", param.name.syntax, typ)}) else None"""
 
         case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
-          needConverters = true
+          needJavaConverters = true
           val argArg = Lit(param.name.syntax)
 
-          val (listElement, _) = listElementAccessor(argType)
+          val listElement = listElementAccessor(argType)
           argType match {
             case Type.Apply(Type.Name("List"), _) ⇒
-              q"""c.getAnyRefList($argArg).asScala.toList.map(_.asInstanceOf[java.util.ArrayList[_]]).map($listElement)"""
+              q"""c.getAnyRefList($argArg).asScala.toList.map(
+                 _.asInstanceOf[_root_.java.util.ArrayList[_]]).map($listElement)"""
 
             case _ ⇒
-              q"""c.getAnyRefList($argArg).asScala.toList.map($listElement)"""
+              q"""c.getAnyRefList($argArg).asScala.toList.map(
+                 $listElement)"""
           }
 
-        case _ if isBasic(declType.syntax) ⇒
-          Term.Name("c.get" + declType + s"""("${param.name}")""")
-
-        case _ if declType.syntax == "Duration" ⇒
-          Term.Name("c.get" + declType + s"""("${param.name}")""")
-
-        case _ if declType.syntax == "Bytes" ⇒
+        case _ if isBasicOrDurationOrBytes(declType.syntax) ⇒
           Term.Name("c.get" + declType + s"""("${param.name}")""")
 
         case _ ⇒
@@ -149,68 +157,56 @@ private class CfgUtil {
     val ctor = q"${Ctor.Ref.Name(name.value)}(...$args)"
     val defn = if (hasBodyElements)
       q"""
-          def apply(c: com.typesafe.config.Config): $name = {
+          def apply(c: _root_.com.typesafe.config.Config): $name = {
             ${Term.Name("$c")} = c
             $ctor
           }
       """
     else
       q"""
-          def apply(c: com.typesafe.config.Config): $name = {
+          def apply(c: _root_.com.typesafe.config.Config): $name = {
             $ctor
           }
       """
 
-    (defn, needConverters)
+    (defn, needJavaConverters)
   }
 
-  private def listElementAccessor(elementType: Type): (Term, Boolean) = {
-    //println("listElementAccessor: elementType = " + elementType.structure)
+  private def listElementAccessor(elementType: Type): Term = elementType match {
+    case Type.Apply(Type.Name("Option"), Seq(_)) ⇒
+      abort("Option only valid at first level in the type")
 
-    var needConverters = false
+    case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
+      val listElement = listElementAccessor(argType)
+      argType match {
+        case Type.Apply(Type.Name("List"), _) ⇒
+          q"""_.asScala.toList.map(_.asInstanceOf[_root_.java.util.ArrayList[_]]).map(
+             $listElement)"""
 
-    val t = elementType match {
-      case Type.Apply(Type.Name("Option"), Seq(_)) ⇒
-        abort("Option only valid at first level in the type")
+        case _ ⇒
+          q"""_.asScala.toList.map($listElement)"""
+      }
 
-      case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
-        needConverters = true
-        val (listElement, _) = listElementAccessor(argType)
-        argType match {
-          case Type.Apply(Type.Name("List"), _) ⇒
-            q"""_.asScala.toList.map(_.asInstanceOf[java.util.ArrayList[_]]).map($listElement)"""
+    case _ if isBasic(elementType.syntax) ⇒
+      Term.Name(s"""_.asInstanceOf[$elementType]""")
 
-          case _ ⇒
-            q"""_.asScala.toList.map($listElement)"""
-        }
+    case _ if elementType.syntax == "Duration" ⇒
+      q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
+         s"d = $$v").getDuration("d")"""
 
-      case _ if isBasic(elementType.syntax) ⇒
-        Term.Name(s"""_.asInstanceOf[$elementType]""")
+    case _ if elementType.syntax == "Bytes" ⇒
+      q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
+         s"d = $$v").getBytes("d").asInstanceOf[Bytes]"""
 
-      case _ if elementType.syntax == "Duration" ⇒
-        q"""v => com.typesafe.config.ConfigFactory.parseString(s"d = $$v").getDuration("d")"""
-
-      case _ if elementType.syntax == "Bytes" ⇒
-        q"""v => com.typesafe.config.ConfigFactory.parseString(s"d = $$v").getBytes("d").asInstanceOf[Bytes]"""
-
-      case _ ⇒
-        val constructor = Ctor.Ref.Name(elementType.syntax)
-        q"h => $constructor($hashMapToConfig)"
-    }
-
-    (t, needConverters)
+    case _ ⇒
+      val constructor = Ctor.Ref.Name(elementType.syntax)
+      q"h => $constructor($hashMapToConfig)"
   }
-
-  private val hashMapToConfig: Term.Apply =
-    q"""com.typesafe.config.ConfigFactory.parseMap(h.asInstanceOf[java.util.HashMap[String, _]])"""
 
   private def handleVal(v: Defn.Val, cn: String): (List[Stat], Boolean) = {
     val Defn.Val(_, pats, Some(declTpe), rhs) = v
 
-    //println("handleVal: cn=" +cn+ "  " + pats.structure +
-    // " declTpe=" + declTpe.structure + "  rhs=" + rhs)
-
-    var needConverters = false
+    var needJavaConverters = false
 
     def getGetter(t: Pat.Var.Term, name: String): Term = {
       val cond = Term.Name(cn + s""".hasPath("$name")""")
@@ -220,23 +216,19 @@ private class CfgUtil {
           q"""if ($cond) Some(${basicOrObjectGetter(cn, name, argType)}) else None"""
 
         case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
-          needConverters = true
-          val (listElement, _) = listElementAccessor(argType)
+          needJavaConverters = true
+          val listElement = listElementAccessor(argType)
           argType match {
             case Type.Apply(Type.Name("List"), _) ⇒
-              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map(_.asInstanceOf[java.util.ArrayList[_]]).map($listElement)"""
+              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map(
+                 _.asInstanceOf[_root_.java.util.ArrayList[_]]).map($listElement)"""
 
             case _ ⇒
-              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map($listElement)"""
+              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map(
+                 $listElement)"""
           }
 
-        case _ if isBasic(declTpe.syntax) ⇒
-          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
-
-        case _ if declTpe.syntax == "Duration" ⇒
-          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
-
-        case _ if declTpe.syntax == "Bytes" ⇒
+        case _ if isBasicOrDurationOrBytes(declTpe.syntax) ⇒
           Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
 
         case _ ⇒
@@ -258,7 +250,7 @@ private class CfgUtil {
         val getter = getGetter(t, name)
         templateStats :+= q"""val $t: $declTpe = $getter"""
     }
-    (templateStats, needConverters)
+    (templateStats, needJavaConverters)
   }
 
   private def basicOrObjectGetter(cn: String, name: String, typ: Type): Term = typ match {
@@ -268,13 +260,7 @@ private class CfgUtil {
     case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
       abort("TODO List of " +argType+ "  : " + name)
 
-    case _ if isBasic(typ.syntax) ⇒
-      Term.Name(cn + ".get" + typ + s"""("$name")""")
-
-    case _ if typ.syntax == "Duration" ⇒
-      Term.Name(cn + ".get" + typ + s"""("$name")""")
-
-    case _ if typ.syntax == "Bytes" ⇒
+    case _ if isBasicOrDurationOrBytes(typ.syntax) ⇒
       Term.Name(cn + ".get" + typ + s"""("$name")""")
 
     case _ ⇒
@@ -285,7 +271,6 @@ private class CfgUtil {
 
   private def handleObj(obj: Defn.Object, cn: String, level: Int = 0): (Stat, Boolean) = {
     val Defn.Object(_, name, template@Template(_, _, _, Some(stats))) = obj
-    //println("handleObj:    " + name.structure)
 
     var templateStats: List[Stat] = List.empty
 
@@ -312,4 +297,14 @@ private class CfgUtil {
   private def isBasic(typ: String): Boolean =
     Set("String", "Int", "Boolean", "Double", "Long"
     ).contains(typ)
+
+  private def isBasicOrDurationOrBytes(typ: String): Boolean = {
+    isBasic(typ) || typ == "Duration" || typ == "Bytes"
+  }
+
+  private val importJavaConverters = q"import scala.collection.JavaConverters._"
+
+  private val hashMapToConfig: Term.Apply =
+    q"""_root_.com.typesafe.config.ConfigFactory.parseMap(
+       h.asInstanceOf[_root_.java.util.HashMap[String, _]])"""
 }

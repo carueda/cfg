@@ -3,10 +3,14 @@
 # `@Cfg` 
 
 Implemented using [Scalameta](http://scalameta.org/), 
-`@Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper that allows to: 
-- specify the configuration of your application or library using case classes and inner vals and objects;
-- access concrete configurations in a type-safe manner while enjoying the code 
-  completion, navigation, and refactoring capabilities of your IDE. 
+`@Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper that allows to
+specify the schema of your application or library
+configuration using plain old case classes and inner vals and objects.
+It generates an `apply(c: com.typesafe.config.Config)` method in the companion
+object to instantiate your case class with a given Typesafe Config object.
+With `@Cfg` you enjoy type safety all the way from config spec to config access, 
+as well as, of course, all the typical IDE features including code completion, 
+navigation, and refactoring. 
  
 `$Cfg` supports all types handled by Typesafe Config, which, in Scala, are
 simply represented with the standard types  
@@ -310,6 +314,8 @@ cfg.durs1.map(_.toHours)  ==> List(2)
 To differentiate this type from `Long`, use the alias `Bytes`:
 
 ```scala
+type Bytes = Long
+
 @Cfg
 case class WithBytesCfg(
                       size    : Bytes,
