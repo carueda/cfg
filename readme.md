@@ -153,9 +153,51 @@ bar.foo.baz.long  ==> 1212100
 bar.foo.baz.who   ==> "Calvin"
 ```
 
+### Default values
+
+```scala
+@Cfg
+case class WithDefaultCfg(
+                      int : Int    = 21,
+                      str : String = "someStr"
+                    )
+
+```
+
+### `Option[T]`
+
+```scala
+@Cfg
+case class WithOptCfg(
+                      int    : Option[Int],
+                      str    : Option[String],
+                      simple : Option[SimpleCfg]
+                    ) {
+
+  val simple2: Option[SimpleCfg] = $
+}
+```
+
+### `List[T]`
+
+
+```scala
+@Cfg
+case class WithListCfg(
+                      ints  : List[Int],
+                      strs  : List[String],
+                      simples1 : List[SimpleCfg],
+                      simpless : List[List[SimpleCfg]]
+                    ) {
+
+  val strss   : List[List[String]] = $
+  val strsss  : List[List[List[String]]] = $
+  val simples2: List[SimpleCfg] = $
+}
+
+```
 ## TODO
 
-- handle list
 - Duration
 - Size-in-bytes
 - ...

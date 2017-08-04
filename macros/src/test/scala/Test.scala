@@ -64,6 +64,19 @@ case class WithOptCfg(
   val simple2: Option[SimpleCfg] = $
 }
 
+@Cfg
+case class WithListCfg(
+                      ints  : List[Int],
+                      strs  : List[String],
+                      simples1 : List[SimpleCfg],
+                      simpless : List[List[SimpleCfg]]
+                    ) {
+
+  val strss   : List[List[String]] = $
+  val strsss  : List[List[List[String]]] = $
+  val simples2: List[SimpleCfg] = $
+}
+
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
@@ -173,6 +186,63 @@ object Test extends TestSuite {
       cfg.str     ==> None
       cfg.simple  ==> None
       cfg.simple2 ==> Some(SimpleCfg(1, "str"))
+    }
+
+    "WithListCfg" - {
+      val conf = ConfigFactory.parseString(
+        """
+          ints  = [1,2,3]
+          strs  = [ hello, world ]
+          strss = [
+            [ abc, de ]
+            [ fgh ]
+          ]
+          strsss = [
+            [
+              [ a, b ]
+              [ c, d, e ]
+            ],
+            [
+              [ x, y ]
+              [ j, k ]
+            ]
+          ]
+          simples1 = [
+            { int = 1, str = "1" }
+          ]
+          simpless = [[
+            { int = 9, str = "9" }
+          ]]
+          simples2 = [
+            { int = 2, str = "2" },
+            { int = 3, str = "3" },
+          ]
+        """.stripMargin)
+      val cfg = WithListCfg(conf)
+      cfg.ints   ==> List(1, 2, 3)
+      cfg.strs   ==> List("hello", "world")
+      cfg.strss  ==> List(
+        List("abc", "de"),
+        List("fgh")
+      )
+      cfg.strsss ==> List(
+        List(
+          List("a", "b"), List("c", "d", "e")
+        ),
+        List(
+          List("x", "y"), List("j", "k")
+        )
+      )
+      cfg.simples1 ==> List(
+        SimpleCfg(1, "1")
+      )
+      cfg.simpless ==> List(
+        List(SimpleCfg(9, "9"))
+      )
+      cfg.simples2 ==> List(
+        SimpleCfg(2, "2"),
+        SimpleCfg(3, "3")
+      )
     }
   }
 }

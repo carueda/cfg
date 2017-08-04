@@ -84,19 +84,48 @@ private object CfgUtil {
       //println("createApply: " +name+ "::" +param.name+
       // " declType = " + declType.syntax + " param.default=" +param.default)
 
-      val actualGetter: Term = {
-        if (isBasic(declType.syntax)) {
-          Term.Name("c.get" + declType + s"""("${param.name}")""")
-        }
-        else isOptionOf(declType) match {
-          case Some(typ) ⇒
-            q"""if ($cond) Some(${basicOrObjectGetter("c", param.name.syntax, typ)}) else None"""
+      val actualGetter: Term = declType match {
+        case Type.Apply(Type.Name("Option"), Seq(typ)) ⇒
+          q"""if ($cond) Some(${basicOrObjectGetter("c", param.name.syntax, typ)}) else None"""
 
-          case None ⇒
-            val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
-            val constructor = Ctor.Ref.Name(declType.syntax)
-            q"$constructor($arg)"
-        }
+        case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
+          val argArg = Lit(param.name.syntax)
+
+//          val arg = q"""c.getAnyRefList($argArg).asScala.toList.map(_.asInstanceOf[$argType])"""
+//          q"""{
+//              import scala.collection.JavaConverters._
+//              $arg
+//              }
+//          """
+
+
+          val listElement = listElementAccessor(argType)
+          val arg = argType match {
+            case Type.Apply(Type.Name("List"), _) ⇒
+              q"""c.getAnyRefList($argArg).asScala.toList.map(_.asInstanceOf[java.util.ArrayList[_]]).map($listElement)"""
+
+            case _ ⇒
+              q"""c.getAnyRefList($argArg).asScala.toList.map($listElement)"""
+
+          }
+
+          q"""{
+              import scala.collection.JavaConverters._
+              $arg
+              }
+          """
+
+
+
+
+
+        case _ if isBasic(declType.syntax) ⇒
+          Term.Name("c.get" + declType + s"""("${param.name}")""")
+
+        case _ ⇒
+          val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
+          val constructor = Ctor.Ref.Name(declType.syntax)
+          q"$constructor($arg)"
       }
 
       param.default match {
@@ -125,6 +154,35 @@ private object CfgUtil {
       """
   }
 
+  private def listElementAccessor(elementType: Type): Term = {
+    //println("listElementAccessor: elementType = " + elementType.structure)
+
+    elementType match {
+      case Type.Apply(Type.Name("Option"), Seq(_)) ⇒
+        abort("Option only valid at first level in the type")
+
+      case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
+        val listElement = listElementAccessor(argType)
+        argType match {
+          case Type.Apply(Type.Name("List"), _) ⇒
+            q"""_.asScala.toList.map(_.asInstanceOf[java.util.ArrayList[_]]).map($listElement)"""
+
+          case _ ⇒
+            q"""_.asScala.toList.map($listElement)"""
+        }
+
+      case _ if isBasic(elementType.syntax) ⇒
+        Term.Name(s"""_.asInstanceOf[$elementType]""")
+
+      case _ ⇒
+        val constructor = Ctor.Ref.Name(elementType.syntax)
+        q"h => $constructor($hashMapToConfig)"
+    }
+  }
+
+  private val hashMapToConfig: Term.Apply =
+    q"""com.typesafe.config.ConfigFactory.parseMap(h.asInstanceOf[java.util.HashMap[String, _]])"""
+
   private def handleVal(v: Defn.Val, cn: String): List[Stat] = {
     val Defn.Val(_, pats, Some(declTpe), rhs) = v
 
@@ -134,19 +192,32 @@ private object CfgUtil {
     def getGetter(t: Pat.Var.Term, name: String): Term = {
       val cond = Term.Name(cn + s""".hasPath("$name")""")
 
-      val actualGetter: Term = {
-        if (isBasic(declTpe.syntax)) {
-          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
-        }
-        else isOptionOf(declTpe) match {
-          case Some(typ) ⇒
-            q"""if ($cond) Some(${basicOrObjectGetter(cn, name, typ)}) else None"""
+      val actualGetter: Term = declTpe match {
+        case Type.Apply(Type.Name("Option"), Seq(argType)) ⇒
+          q"""if ($cond) Some(${basicOrObjectGetter(cn, name, argType)}) else None"""
 
-          case None ⇒
-            val arg = Term.Name(s"""$cn.getConfig("$name")""")
-            val constructor = Ctor.Ref.Name(declTpe.syntax)
-            q"$constructor($arg)"
-        }
+        case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
+          val listElement = listElementAccessor(argType)
+          val arg = argType match {
+            case Type.Apply(Type.Name("List"), _) ⇒
+              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map(_.asInstanceOf[java.util.ArrayList[_]]).map($listElement)"""
+
+            case _ ⇒
+              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map($listElement)"""
+          }
+          q"""{
+              import scala.collection.JavaConverters._
+              $arg
+              }
+          """
+
+        case _ if isBasic(declTpe.syntax) ⇒
+          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
+
+        case _ ⇒
+          val arg = Term.Name(s"""$cn.getConfig("$name")""")
+          val constructor = Ctor.Ref.Name(declTpe.syntax)
+          q"$constructor($arg)"
       }
 
       if (rhs.syntax == "$")
@@ -165,18 +236,20 @@ private object CfgUtil {
     templateStats
   }
 
-  private def basicOrObjectGetter(cn: String, name: String, typ: Type): Term = {
-    if (isBasic(typ.syntax)) {
-      Term.Name(cn + ".get" + typ + s"""("$name")""")
-    }
-    else if (isOptionOf(typ).isDefined) {
+  private def basicOrObjectGetter(cn: String, name: String, typ: Type): Term = typ match {
+    case Type.Apply(Type.Name("Option"), Seq(_)) ⇒
       abort("Option only valid at first level in the type: " + name)
-    }
-    else {
+
+    case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
+      abort("TODO List of " +argType+ "  : " + name)
+
+    case _ if isBasic(typ.syntax) ⇒
+      Term.Name(cn + ".get" + typ + s"""("$name")""")
+
+    case _ ⇒
       val arg = Term.Name(cn + s""".getConfig("$name")""")
       val constructor = Ctor.Ref.Name(typ.syntax)
       q"$constructor($arg)"
-    }
   }
 
   private def handleObj(obj: Defn.Object, cn: String, level: Int = 0): Stat = {
@@ -203,11 +276,4 @@ private object CfgUtil {
   private def isBasic(typ: String): Boolean =
     Set("String", "Int", "Boolean", "Double", "Long"
     ).contains(typ)
-
-  private def isOptionOf(typ: Type.Arg): Option[Type] = typ match {
-    case Type.Apply(Type.Name("Option"), Seq(of)) ⇒
-      Some(of)
-
-    case _ ⇒ None
-  }
 }
