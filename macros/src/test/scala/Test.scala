@@ -28,76 +28,6 @@ case class BarCfg(
   }
 }
 
-@Cfg
-case class WithOtherCfg(
-                     reqInt  : Int,
-                     reqStr  : String,
-                     bar     : BarCfg
-                   ) {
-  val simple : SimpleCfg = SimpleCfg(11, "11")
-  object foo {
-    val bool : Boolean = $
-  }
-  val other : Long = $
-}
-
-@Cfg
-case class CompanionCfg(strs : List[String]) {
-  val h: Int = $
-}
-object CompanionCfg {
-  val xyz: String = "whatever"
-}
-
-@Cfg
-case class Companion2Cfg(str : String) {
-  val hs: List[Int] = $
-}
-object Companion2Cfg {
-  def apply(): Unit = ()
-}
-
-@Cfg
-case class WithDefaultCfg(
-                      int : Int    = 21,
-                      str : String = "someStr"
-                    )
-
-@Cfg
-case class WithOptCfg(
-                      int    : Option[Int],
-                      str    : Option[String],
-                      simple : Option[SimpleCfg]
-                    ) {
-
-  val simple2: Option[SimpleCfg] = $
-}
-
-@Cfg
-case class WithListCfg(
-                      ints  : List[Int],
-                      strs  : List[String],
-                      simples1 : List[SimpleCfg],
-                      simpless : List[List[SimpleCfg]]
-                    ) {
-
-  val strss   : List[List[String]] = $
-  val strsss  : List[List[List[String]]] = $
-  val simples2: List[SimpleCfg] = $
-}
-
-@Cfg
-case class WithDurationCfg(
-                      dur    : Duration
-                      ,durOpt : Option[Duration]
-                      ,durs   : List[Duration]
-                    ) {
-
-  val dur1    : Duration = $
-  val durOpt1 : Option[Duration] = $
-  val durs1   : List[Duration] = $
-}
-
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
@@ -137,6 +67,19 @@ object Test extends TestSuite {
     }
 
     "WithOtherCfg" - {
+      @Cfg
+      case class WithOtherCfg(
+                               reqInt  : Int,
+                               reqStr  : String,
+                               bar     : BarCfg
+                             ) {
+        val simple : SimpleCfg = SimpleCfg(11, "11")
+        object foo {
+          val bool : Boolean = $
+        }
+        val other : Long = $
+      }
+
       val cfg = WithOtherCfg(ConfigFactory.parseString(
         """
         reqInt = 2130
@@ -176,6 +119,14 @@ object Test extends TestSuite {
     }
     
     "CompanionCfg" - {
+      @Cfg
+      case class CompanionCfg(strs : List[String]) {
+        val h: Int = $
+      }
+      object CompanionCfg {
+        val xyz: String = "whatever"
+      }
+
       val conf = ConfigFactory.parseString(
         """
           |strs = [ Calvin, Hobbes ]
@@ -187,6 +138,14 @@ object Test extends TestSuite {
     }
 
     "Companion2Cfg" - {
+      @Cfg
+      case class Companion2Cfg(str : String) {
+        val hs: List[Int] = $
+      }
+      object Companion2Cfg {
+        def apply(): Unit = ()
+      }
+
       val conf = ConfigFactory.parseString(
         """
           |str = Calvin
@@ -198,6 +157,12 @@ object Test extends TestSuite {
     }
 
     "WithDefaultCfg" - {
+      @Cfg
+      case class WithDefaultCfg(
+                                 int : Int    = 21,
+                                 str : String = "someStr"
+                               )
+
       val conf = ConfigFactory.parseString("")
       val cfg = WithDefaultCfg(conf)
       cfg.int  ==> 21
@@ -205,6 +170,16 @@ object Test extends TestSuite {
     }
 
     "WithOptCfg" - {
+      @Cfg
+      case class WithOptCfg(
+                             int    : Option[Int],
+                             str    : Option[String],
+                             simple : Option[SimpleCfg]
+                           ) {
+
+        val simple2: Option[SimpleCfg] = $
+      }
+
       val conf = ConfigFactory.parseString(
         """
           int =  8
@@ -221,6 +196,19 @@ object Test extends TestSuite {
     }
 
     "WithListCfg" - {
+      @Cfg
+      case class WithListCfg(
+                              ints  : List[Int],
+                              strs  : List[String],
+                              simples1 : List[SimpleCfg],
+                              simpless : List[List[SimpleCfg]]
+                            ) {
+
+        val strss   : List[List[String]] = $
+        val strsss  : List[List[List[String]]] = $
+        val simples2: List[SimpleCfg] = $
+      }
+
       val conf = ConfigFactory.parseString(
         """
           ints  = [1,2,3]
@@ -278,6 +266,19 @@ object Test extends TestSuite {
     }
 
     "WithDurationCfg" - {
+
+      @Cfg
+      case class WithDurationCfg(
+                                  dur    : Duration,
+                                  durOpt : Option[Duration],
+                                  durs   : List[Duration]
+                                ) {
+
+        val dur1    : Duration = $
+        val durOpt1 : Option[Duration] = $
+        val durs1   : List[Duration] = $
+      }
+
       val conf = ConfigFactory.parseString(
         """
           dur = 6h
