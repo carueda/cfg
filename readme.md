@@ -162,6 +162,10 @@ case class WithDefaultCfg(
                       str : String = "someStr"
                     )
 
+val conf = ConfigFactory.parseString("")
+val cfg = WithDefaultCfg(conf)
+cfg.int  ==> 21
+cfg.str  ==> "someStr"
 ```
 
 ### `Option[T]`
@@ -176,10 +180,23 @@ case class WithOptCfg(
 
   val simple2: Option[SimpleCfg] = $
 }
+
+val conf = ConfigFactory.parseString(
+  """
+    int =  8
+    simple2 {
+      int = 1
+      str = str
+    }
+  """.stripMargin)
+val cfg = WithOptCfg(conf)
+cfg.int     ==> Some(8)
+cfg.str     ==> None
+cfg.simple  ==> None
+cfg.simple2 ==> Some(SimpleCfg(1, "str"))
 ```
 
 ### `List[T]`
-
 
 ```scala
 @Cfg
@@ -195,7 +212,62 @@ case class WithListCfg(
   val simples2: List[SimpleCfg] = $
 }
 
+val conf = ConfigFactory.parseString(
+  """
+    ints  = [1,2,3]
+    strs  = [ hello, world ]
+    strss = [
+      [ abc, de ]
+      [ fgh ]
+    ]
+    strsss = [
+      [
+        [ a, b ]
+        [ c, d, e ]
+      ],
+      [
+        [ x, y ]
+        [ j, k ]
+      ]
+    ]
+    simples1 = [
+      { int = 1, str = "1" }
+    ]
+    simpless = [[
+      { int = 9, str = "9" }
+    ]]
+    simples2 = [
+      { int = 2, str = "2" },
+      { int = 3, str = "3" },
+    ]
+  """.stripMargin)
+val cfg = WithListCfg(conf)
+cfg.ints   ==> List(1, 2, 3)
+cfg.strs   ==> List("hello", "world")
+cfg.strss  ==> List(
+  List("abc", "de"),
+  List("fgh")
+)
+cfg.strsss ==> List(
+  List(
+    List("a", "b"), List("c", "d", "e")
+  ),
+  List(
+    List("x", "y"), List("j", "k")
+  )
+)
+cfg.simples1 ==> List(
+  SimpleCfg(1, "1")
+)
+cfg.simpless ==> List(
+  List(SimpleCfg(9, "9"))
+)
+cfg.simples2 ==> List(
+  SimpleCfg(2, "2"),
+  SimpleCfg(3, "3")
+)
 ```
+
 ## TODO
 
 - Duration
