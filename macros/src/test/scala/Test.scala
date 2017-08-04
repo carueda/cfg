@@ -98,18 +98,6 @@ case class WithDurationCfg(
   val durs1   : List[Duration] = $
 }
 
-@Cfg
-case class WithBytesCfg(
-                      size    : Bytes,
-                      sizeOpt : Option[Bytes],
-                      sizes   : List[Bytes]
-                    ) {
-
-  val size1    : Bytes = $
-  val sizeOpt1 : Option[Bytes] = $
-  val sizes1   : List[Bytes] = $
-}
-
 object Test extends TestSuite {
   val tests: framework.Tree[framework.Test] = this {
 
@@ -308,6 +296,21 @@ object Test extends TestSuite {
     }
 
     "WithSizeInBytesCfg" - {
+
+      type Bytes = Long
+
+      @Cfg
+      case class WithBytesCfg(
+                               size    : Bytes,
+                               sizeOpt : Option[Bytes],
+                               sizes   : List[Bytes]
+                             ) {
+
+        val size1    : Bytes = $
+        val sizeOpt1 : Option[Bytes] = $
+        val sizes1   : List[Bytes] = $
+      }
+
       val conf = ConfigFactory.parseString(
         """
           size = 2048K
