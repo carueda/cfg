@@ -22,6 +22,20 @@ along with `List[T]` and `Option[T]`
 
 ## Usage
 
+In your `build.sbt`:
+
+```scala
+libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.2"
+
+// see http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
+addCompilerPlugin(
+  ("org.scalameta" % "paradise" % "3.0.0-M7").cross(CrossVersion.full)
+)
+```
+
+> Note: the published artifact is still only for Scala 2.11.
+> This will be improved as time permits and as we get specific requests and PRs.
+
 Use the `Cfg` annotation to specify the schema of your configuration:
 
 ```scala
