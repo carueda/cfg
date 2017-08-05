@@ -135,8 +135,11 @@ private object CfgUtil {
                  $listElement)"""
           }
 
-        case _ if isBasicOrDurationOrBytes(declType.syntax) ⇒
+        case _ if isBasicOrDuration(declType.syntax) ⇒
           Term.Name("c.get" + declType + s"""("${param.name}")""")
+
+        case _ if isSizeInBytes(declType.syntax) ⇒
+          Term.Name(s"""c.getBytes("${param.name}")""")
 
         case _ ⇒
           val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
@@ -194,9 +197,9 @@ private object CfgUtil {
       q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
          s"d = $$v").getDuration("d")"""
 
-    case _ if elementType.syntax == "Bytes" ⇒
+    case _ if elementType.syntax == "SizeInBytes" ⇒
       q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
-         s"d = $$v").getBytes("d").asInstanceOf[Bytes]"""
+         s"d = $$v").getBytes("d").asInstanceOf[SizeInBytes]"""
 
     case _ ⇒
       val constructor = Ctor.Ref.Name(elementType.syntax)
@@ -228,8 +231,11 @@ private object CfgUtil {
                  $listElement)"""
           }
 
-        case _ if isBasicOrDurationOrBytes(declTpe.syntax) ⇒
-          Term.Name(cn + ".get" + declTpe.syntax + s"""("$name")""")
+        case _ if isBasicOrDuration(declTpe.syntax) ⇒
+          Term.Name(cn + s""".get${declTpe.syntax}("$name")""")
+
+        case _ if isSizeInBytes(declTpe.syntax) ⇒
+          Term.Name(cn + s""".getBytes("$name")""")
 
         case _ ⇒
           val arg = Term.Name(s"""$cn.getConfig("$name")""")
@@ -260,8 +266,11 @@ private object CfgUtil {
     case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
       abort("TODO List of " +argType+ "  : " + name)
 
-    case _ if isBasicOrDurationOrBytes(typ.syntax) ⇒
-      Term.Name(cn + ".get" + typ + s"""("$name")""")
+    case _ if isBasicOrDuration(typ.syntax) ⇒
+      Term.Name(cn + s""".get${typ.syntax}("$name")""")
+
+    case _ if isSizeInBytes(typ.syntax) ⇒
+      Term.Name(cn + s""".getBytes("$name")""")
 
     case _ ⇒
       val arg = Term.Name(cn + s""".getConfig("$name")""")
@@ -298,9 +307,11 @@ private object CfgUtil {
     Set("String", "Int", "Boolean", "Double", "Long"
     ).contains(typ)
 
-  private def isBasicOrDurationOrBytes(typ: String): Boolean = {
-    isBasic(typ) || typ == "Duration" || typ == "Bytes"
+  private def isBasicOrDuration(typ: String): Boolean = {
+    isBasic(typ) || typ == "Duration"
   }
+
+  private def isSizeInBytes(typ: String): Boolean = typ == "SizeInBytes"
 
   private val importJavaConverters = q"import scala.collection.JavaConverters._"
 

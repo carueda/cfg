@@ -307,19 +307,16 @@ object Test extends TestSuite {
     }
 
     "WithSizeInBytesCfg" - {
-
-      type Bytes = Long
-
       @Cfg
       case class WithBytesCfg(
-                               size    : Bytes,
-                               sizeOpt : Option[Bytes],
-                               sizes   : List[Bytes]
+                               size    : SizeInBytes,
+                               sizeOpt : Option[SizeInBytes],
+                               sizes   : List[SizeInBytes]
                              ) {
 
-        val size1    : Bytes = $
-        val sizeOpt1 : Option[Bytes] = $
-        val sizes1   : List[Bytes] = $
+        val size1    : SizeInBytes = $
+        val sizeOpt1 : Option[SizeInBytes] = $
+        val sizes1   : List[SizeInBytes] = $
       }
 
       val conf = ConfigFactory.parseString(

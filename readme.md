@@ -1,58 +1,44 @@
 [![Build Status](https://travis-ci.org/carueda/cfg.svg?branch=master)](https://travis-ci.org/carueda/cfg)
 
-# `@Cfg` 
+# `Cfg` 
 
 Implemented using [Scalameta](http://scalameta.org/), 
-`@Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper that allows to
-specify the schema of your application or library
+`Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper 
+that allows to specify the schema of your application or library
 configuration using plain old case classes and inner vals and objects.
 It generates an `apply(c: com.typesafe.config.Config)` method in the companion
 object to instantiate your case class with a given Typesafe Config object.
-With `@Cfg` you enjoy type safety all the way from config spec to config access, 
-as well as, of course, all the typical IDE features including code completion, 
-navigation, and refactoring. 
+With `Cfg` you enjoy type safety all the way from configuration spec to 
+configuration access, as well as, of course, all the typical features
+of your IDE related with code completion, navigation, and refactoring. 
  
 `$Cfg` supports all types handled by Typesafe Config, which, in Scala, are
 simply represented with the standard types  
 `String`, `Int`, `Long`, `Double`, `Boolean`, `java.time.Duration`, 
-`Bytes` (alias for `Long`), 
-along with `Option[T]` to represent optional configuration entries, 
-and `List[T]` (where `T` is, recursively, any supported type). 
+`SizeInBytes` (alias for `Long`), 
+along with `List[T]` and `Option[T]` 
+(where `T` is, recursively, any supported type). 
 
 
 ## Usage
 
-Use the `@Cfg` annotation to specify the schema of your configuration:
+Use the `Cfg` annotation to specify the schema of your configuration:
 
 ```scala
+import carueda.cfg._
+
 @Cfg
-case class SimpleCfg(
-                   int : Int,
-                   str : String
-                 )
+case class SimpleCfg(int: Int, str: String)
 ```
 
-> The annotation generates a companion object with `apply` method expecting
-> a `com.typesafe.config.Config` instance:
-> 
-> ```scala
-> object SimpleCfg {
->   def apply(c: com.typesafe.config.Config): SimpleCfg = {
->     SimpleCfg(c.getInt("int"), c.getString("str"))
->   }
-> }
-> ```
-
-
-Use any usual Typesafe Config 
-mechanism to load a concrete configuration, for example:
+Use any usual Typesafe Config mechanism to load a concrete configuration:
 
 ```scala
-val conf = ConfigFactory.parseString(
+val conf = com.typesafe.config.ConfigFactory.parseString(
   """
   int = 1
   str = "Hobbes"
-""")
+  """)
 ```
 
 Then, just create the wrapper and enjoy the benefits:
@@ -64,120 +50,29 @@ cfg.int  ==> 1
 cfg.str  ==> "Hobbes"
 ```
 
-You can also include members in the case class:
-
-```scala
-@Cfg
-case class BarCfg(
-                   reqInt : Int,
-                   reqStr : String
-                 ) {
-  val long : Long = $
-
-  object foo {
-    val bool : Boolean = $
-
-    object baz {
-      val who  : String = "Calvin"
-      val other: Int    = $
-    }
-  }
-}
-```
-
-which, in particular, allows to directly embed the specification of inner objects
-without necessarily having to introduce a class for them.
-
-The `$` is a placeholder that gets replaced with appropriate extraction logic by
-the macro. A concrete initialization value (e.g., `"Calvin"` for the `who` entry above)
-indicates that the entry is optional, with the given value as the default.
-
-Using `BarCfg`:
-
-```scala
-val bar = BarCfg(ConfigFactory.parseString(
-  """
-  reqInt = 9393
-  reqStr = "reqStr"
-  foo {
-    bool = false
-    baz {
-      long = 1212100
-    }
-  }
-"""))
-
-bar.reqInt        ==> 9393
-bar.reqStr        ==> "reqStr"
-bar.foo.bool      ==> false
-bar.foo.baz.long  ==> 1212100
-bar.foo.baz.who   ==> "Calvin"
-```
-
-Of course, you can refer to other `@Cfg`-annotated classes: 
-
-```scala
-@Cfg
-case class WithOtherCfg(
-                    reqInt  : Int,
-                    reqStr  : String,
-                    bar     : BarCfg
-                  ) {
-  object foo {
-    val bool : Boolean = $
-  }
-  val other : Long = $
-}
-
-val cfg = WithOtherCfg(ConfigFactory.parseString(
-  """
-  reqInt = 2130
-  reqStr = "reqStr"
-  foo {
-    bool = true
-  }
-  other = 1010
-  bar {
-    reqInt = 9393
-    reqStr = "reqStr"
-    foo {
-      bool = false
-      baz {
-        long = 1212100
-      }
-    }
-  }
-"""))
-
-cfg.reqInt        ==> 2130
-cfg.reqStr        ==> "reqStr"
-cfg.foo.bool      ==> true
-cfg.other         ==> 1010
-
-val bar = cfg.bar
-bar.reqInt        ==> 9393
-bar.reqStr        ==> "reqStr"
-bar.foo.bool      ==> false
-bar.foo.baz.long  ==> 1212100
-bar.foo.baz.who   ==> "Calvin"
-```
-
 ### Default values
+
+Just initialize the entries in your class as you would normally do:
 
 ```scala
 @Cfg
 case class WithDefaultCfg(
-                      int : Int    = 21,
-                      str : String = "someStr"
+                      int    : Int       = 21,
+                      str    : String    = "someStr",
+                      simple : SimpleCfg = SimpleCfg(1, "A")
                     )
 
 val conf = ConfigFactory.parseString("")
 val cfg = WithDefaultCfg(conf)
 cfg.int  ==> 21
 cfg.str  ==> "someStr"
+cfg.simple.int  ==> 1
+cfg.simple.str  ==> "A"
 ```
 
-### `Option[T]`
+### Optional entries
+
+For completely optional entries (i.e., without any default value), use `Option[T]`:
 
 ```scala
 @Cfg
@@ -185,27 +80,26 @@ case class WithOptCfg(
                       int    : Option[Int],
                       str    : Option[String],
                       simple : Option[SimpleCfg]
-                    ) {
-
-  val simple2: Option[SimpleCfg] = $
-}
+                    )
 
 val conf = ConfigFactory.parseString(
   """
-    int =  8
-    simple2 {
-      int = 1
-      str = str
-    }
-  """.stripMargin)
+  int =  8
+  simple {
+    int = 1
+    str = str
+  }
+  """)
+  
 val cfg = WithOptCfg(conf)
 cfg.int     ==> Some(8)
 cfg.str     ==> None
-cfg.simple  ==> None
-cfg.simple2 ==> Some(SimpleCfg(1, "str"))
+cfg.simple  ==> Some(SimpleCfg(1, "str"))
 ```
 
-### `List[T]`
+### Lists
+
+Just use `List[T]`:
 
 ```scala
 @Cfg
@@ -223,33 +117,34 @@ case class WithListCfg(
 
 val conf = ConfigFactory.parseString(
   """
-    ints  = [1,2,3]
-    strs  = [ hello, world ]
-    strss = [
-      [ abc, de ]
-      [ fgh ]
+  ints  = [1,2,3]
+  strs  = [ hello, world ]
+  strss = [
+    [ abc, de ]
+    [ fgh ]
+  ]
+  strsss = [
+    [
+      [ a, b ]
+      [ c, d, e ]
+    ],
+    [
+      [ x, y ]
+      [ j, k ]
     ]
-    strsss = [
-      [
-        [ a, b ]
-        [ c, d, e ]
-      ],
-      [
-        [ x, y ]
-        [ j, k ]
-      ]
-    ]
-    simples1 = [
-      { int = 1, str = "1" }
-    ]
-    simpless = [[
-      { int = 9, str = "9" }
-    ]]
-    simples2 = [
-      { int = 2, str = "2" },
-      { int = 3, str = "3" },
-    ]
-  """.stripMargin)
+  ]
+  simples1 = [
+    { int = 1, str = "1" }
+  ]
+  simpless = [[
+    { int = 9, str = "9" }
+  ]]
+  simples2 = [
+    { int = 2, str = "2" },
+    { int = 3, str = "3" },
+  ]
+  """)
+
 val cfg = WithListCfg(conf)
 cfg.ints   ==> List(1, 2, 3)
 cfg.strs   ==> List("hello", "world")
@@ -277,70 +172,103 @@ cfg.simples2 ==> List(
 )
 ```
 
-### Duration
+### Class members
+
+You can also include a body with members in the case class:
 
 ```scala
 @Cfg
-case class WithDurationCfg(
-                      dur    : Duration
-                      ,durOpt : Option[Duration]
-                      ,durs   : List[Duration]
-                    ) {
+case class BarCfg(
+                   reqInt : Int,
+                   reqStr : String
+                 ) {
 
-  val dur1    : Duration = $
-  val durOpt1 : Option[Duration] = $
-  val durs1   : List[Duration] = $
+  object foo {
+    val bool : Boolean = $
+
+    object baz {
+      val who  : String = "Calvin"
+      val other: Int    = $
+    }
+  }
+  val long : Long = $
 }
+```
+
+This, in particular, allows to directly embed the specification of inner objects
+without necessarily having to introduce a class for them.
+The `$` is a placeholder that gets replaced with appropriate extraction logic by
+the macro.
+
+Using `BarCfg`:
+
+```scala
+val bar = BarCfg(ConfigFactory.parseString(
+  """
+  reqInt = 9393
+  reqStr = "reqStr"
+  long = 1212100
+  foo {
+    bool = false
+    baz {
+      long = 1212100
+    }
+  }
+  """))
+
+bar.reqInt        ==> 9393
+bar.reqStr        ==> "reqStr"
+bar.foo.bool      ==> false
+bar.foo.baz.long  ==> 1212100
+bar.foo.baz.who   ==> "Calvin"
+bar.long          ==> 1212100
+```
+
+### Duration
+
+```scala
+import java.time.Duration
+
+@Cfg
+case class WithDurationCfg(
+                      dur    : Duration,
+                      durOpt : Option[Duration],
+                      durs   : List[Duration]
+                    )
 
 val conf = ConfigFactory.parseString(
   """
-    dur = 6h
-    durs = [ 3600s, 1d ]
-    dur1 = 3s
-    durOpt1 = 3h
-    durs1 = [ 120m ]
-  """.stripMargin)
+  dur = 6h
+  durs = [ 3600s, 1d ]
+  dur1 = 3s
+  """)
 val cfg = WithDurationCfg(conf)
 cfg.dur.toHours  ==> 6
-cfg.durOpt ==> None
+cfg.durOpt  ==> None
 cfg.durs.map(_.toHours)  ==> List(1, 24)
-cfg.dur1.toMillis ==> 3000
-cfg.durOpt1.map(_.toMinutes) ==> Some(180)
-cfg.durs1.map(_.toHours)  ==> List(2)
 ```
 
 ### Size-in-bytes
 
-To differentiate this type from `Long`, use the alias `Bytes`:
+This is represented with a long type in the Typesafe Config library.
+In `Cfg`, to tell this type apart from a regular `Long`, 
+use the alias `SizeInBytes`:
 
 ```scala
-type Bytes = Long
-
 @Cfg
 case class WithBytesCfg(
-                      size    : Bytes,
-                      sizeOpt : Option[Bytes],
-                      sizes   : List[Bytes]
-                    ) {
-
-  val size1    : Bytes = $
-  val sizeOpt1 : Option[Bytes] = $
-  val sizes1   : List[Bytes] = $
-}
+                      size    : SizeInBytes,
+                      sizeOpt : Option[SizeInBytes],
+                      sizes   : List[SizeInBytes]
+                    )
 
 val conf = ConfigFactory.parseString(
   """
-    size = 2048K
-    sizes = [ 1000, "64G", "16kB" ]
-    size1 = 64G
-    sizeOpt1 = 1kB
-    sizes1 = [ 512 ]
-  """.stripMargin)
+  size = 2048K
+  sizes = [ 1000, "64G", "16kB" ]
+  """)
 val cfg = WithBytesCfg(conf)
 cfg.size     ==> 2048*1024
 cfg.sizeOpt  ==> None
 cfg.sizes    ==> List(1000, 64*1024*1024*1024L, 16*1000)
-cfg.size1    ==> 64*1024*1024*1024L
-cfg.sizeOpt1 ==> Some(1000)
-cfg.sizes1   ==> List(512)
 ```
