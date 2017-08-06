@@ -66,6 +66,9 @@ private object CfgUtil {
         val (stats, nc) = handleVal(v, cn)
         templateStats ++= stats
         clsNeedJavaConverters = clsNeedJavaConverters || nc
+
+      case stat ⇒
+        templateStats :+= stat
     }
 
     val hasBodyElements = templateStats.nonEmpty
@@ -298,6 +301,9 @@ private object CfgUtil {
         val (stats, nc) = handleVal(v, newCn.syntax)
         templateStats ++= stats
         needConverters = needConverters || nc
+
+      case stat ⇒
+        templateStats :+= stat
     }
 
     (obj.copy(templ = template.copy(stats = Some(templateStats))), needConverters)

@@ -12,7 +12,7 @@ With `Cfg` you enjoy type safety all the way from configuration spec to
 configuration access, as well as, of course, all the typical features
 of your IDE related with code completion, navigation, and refactoring. 
  
-`$Cfg` supports all types handled by Typesafe Config, which, in Scala, are
+`Cfg` supports all types handled by Typesafe Config, which, in Scala, are
 simply represented with the standard types  
 `String`, `Int`, `Long`, `Double`, `Boolean`, `java.time.Duration`, 
 `SizeInBytes` (alias for `Long`), 
@@ -25,7 +25,7 @@ along with `List[T]` and `Option[T]`
 In your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.2"
+libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.3"
 
 // see http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
 addCompilerPlugin(

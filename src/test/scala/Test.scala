@@ -335,5 +335,65 @@ object Test extends TestSuite {
       cfg.sizeOpt1 ==> Some(1000)
       cfg.sizes1   ==> List(512)
     }
+
+    "WithVarsDefsCfg" - {
+      @Cfg
+      case class WithOtherStuffCfg(value: Long) {
+        object bar {
+          val name : String  = $
+          val cool : Boolean = true
+          var abc  : Double  = 0.2
+
+          def isCool: Boolean = cool
+
+          override def toString: String = s"<'$name', $cool>"
+        }
+        override def toString: String = s"<$value, $bar>"
+      }
+
+      val cfg = WithOtherStuffCfg(ConfigFactory.parseString(
+        """
+           value = 1
+           bar {
+             name = "Name"
+             cool = false
+           }
+           cc = { x = 99 }
+        """.stripMargin))
+
+      cfg.value ==> 1
+      cfg.bar.name ==> "Name"
+      cfg.bar.isCool ==> false
+      cfg.bar.abc ==> 0.2
+      cfg.toString ==> "<1, <'Name', false>>"
+    }
+
+    "WithInnerCfgsCfg" - {
+      @Cfg
+      case class WithInnerCfgsCfg(value: Long = 11) {
+        object bar {
+          @Cfg
+          case class BB(b: Int)
+
+          val bb: BB = $
+        }
+
+        @Cfg
+        case class CC(c: Int)
+
+        val cc: CC = CC(33)
+      }
+
+      val cfg = WithInnerCfgsCfg(ConfigFactory.parseString(
+        """
+           bar {
+             bb = { b = 22 }
+           }
+        """.stripMargin))
+
+      cfg.value ==> 11
+      cfg.bar.bb ==> cfg.bar.BB(22)
+      cfg.cc ==> cfg.CC(33)
+    }
   }
 }
