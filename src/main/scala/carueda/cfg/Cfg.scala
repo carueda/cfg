@@ -125,7 +125,7 @@ private object CfgUtil {
 
         case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
           needJavaConverters = true
-          val argArg = Lit(param.name.syntax)
+          val argArg = Lit.String(param.name.syntax)
 
           val listElement = listElementAccessor(argType)
           argType match {
@@ -198,11 +198,11 @@ private object CfgUtil {
 
     case _ if elementType.syntax == "Duration" ⇒
       q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
-         s"d = $$v").getDuration("d")"""
+         "d = " + v).getDuration("d")"""
 
     case _ if elementType.syntax == "SizeInBytes" ⇒
       q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
-         s"d = $$v").getBytes("d").asInstanceOf[SizeInBytes]"""
+         "d = " + v).getBytes("d").asInstanceOf[SizeInBytes]"""
 
     case _ ⇒
       val constructor = Ctor.Ref.Name(elementType.syntax)
@@ -226,11 +226,11 @@ private object CfgUtil {
           val listElement = listElementAccessor(argType)
           argType match {
             case Type.Apply(Type.Name("List"), _) ⇒
-              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map(
+              q"""${Term.Name(cn)}.getAnyRefList(${Lit.String(name)}).asScala.toList.map(
                  _.asInstanceOf[_root_.java.util.ArrayList[_]]).map($listElement)"""
 
             case _ ⇒
-              q"""${Term.Name(cn)}.getAnyRefList(${Lit(name)}).asScala.toList.map(
+              q"""${Term.Name(cn)}.getAnyRefList(${Lit.String(name)}).asScala.toList.map(
                  $listElement)"""
           }
 
@@ -281,7 +281,7 @@ private object CfgUtil {
       q"$constructor($arg)"
   }
 
-  private def handleObj(obj: Defn.Object, cn: String, level: Int = 0): (Stat, Boolean) = {
+  private def handleObj(obj: Defn.Object, cn: String, level: Int): (Stat, Boolean) = {
     val Defn.Object(_, name, template@Template(_, _, _, Some(stats))) = obj
 
     var templateStats: List[Stat] = List.empty

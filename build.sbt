@@ -1,8 +1,10 @@
 organization := "com.github.carueda"
 name := "cfg"
-version := "0.0.3"
+version := "0.0.4"
 
-scalaVersion in ThisBuild := "2.11.8"
+scalaVersion in ThisBuild := "2.12.2"
+
+crossScalaVersions := Seq("2.11.11", "2.12.2")
 
 lazy val metaMacroSettings: Seq[Def.Setting[_]] = Seq(
   // New-style macro annotations are under active development.  As a result, in
@@ -13,7 +15,7 @@ lazy val metaMacroSettings: Seq[Def.Setting[_]] = Seq(
   // A dependency on macro paradise 3.x is required to both write and expand
   // new-style macros.  This is similar to how it works for old-style macro
   // annotations and a dependency on macro paradise 2.x.
-  addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M7" cross CrossVersion.full),
+  addCompilerPlugin("org.scalameta" % "paradise" % "3.0.0-M8" cross CrossVersion.full),
   scalacOptions += "-Xplugin-require:macroparadise",
   // temporary workaround for https://github.com/scalameta/paradise/issues/10
   scalacOptions in (Compile, console) := Seq(), // macroparadise plugin doesn't work in repl yet.
@@ -26,7 +28,7 @@ metaMacroSettings
 // A dependency on scala.meta is required to write new-style macros, but not
 // to expand such macros.  This is similar to how it works for old-style
 // macros and a dependency on scala.reflect.
-libraryDependencies += "org.scalameta" %% "scalameta" % "1.6.0"
+libraryDependencies += "org.scalameta" %% "scalameta" % "1.8.0"
 
 libraryDependencies ++= Seq(
   "com.typesafe"    %   "config"        %  "1.3.1",
