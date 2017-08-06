@@ -27,9 +27,9 @@ In your `build.sbt`:
 ```scala
 libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.4"
 
-// see http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
+// http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
 addCompilerPlugin(
-  ("org.scalameta" % "paradise" % "3.0.0-M7").cross(CrossVersion.full)
+  ("org.scalameta" % "paradise" % "3.0.0-M8").cross(CrossVersion.full)
 )
 ```
 
