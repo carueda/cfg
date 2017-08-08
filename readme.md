@@ -110,6 +110,58 @@ cfg.str     ==> None
 cfg.simple  ==> Some(SimpleCfg(1, "str"))
 ```
 
+### Class members
+
+You can also include a body with members in the case class:
+
+```scala
+@Cfg
+case class BarCfg(
+                   reqInt : Int,
+                   reqStr : String
+                 ) {
+
+  object foo {
+    val bool : Boolean = $
+
+    object baz {
+      val who  : String = "Calvin"
+      val other: Int    = $
+    }
+  }
+  val long : Long = $
+}
+```
+
+This, in particular, allows to directly embed the specification of inner objects
+without necessarily having to introduce a class for them.
+The `$` is a placeholder that gets replaced with appropriate extraction logic by
+the macro.
+
+Using `BarCfg`:
+
+```scala
+val bar = BarCfg(ConfigFactory.parseString(
+  """
+  reqInt = 9393
+  reqStr = "reqStr"
+  long = 1212100
+  foo {
+    bool = false
+    baz {
+      long = 1212100
+    }
+  }
+  """))
+
+bar.reqInt        ==> 9393
+bar.reqStr        ==> "reqStr"
+bar.foo.bool      ==> false
+bar.foo.baz.long  ==> 1212100
+bar.foo.baz.who   ==> "Calvin"
+bar.long          ==> 1212100
+```
+
 ### Lists
 
 Just use `List[T]`:
@@ -183,58 +235,6 @@ cfg.simples2 ==> List(
   SimpleCfg(2, "2"),
   SimpleCfg(3, "3")
 )
-```
-
-### Class members
-
-You can also include a body with members in the case class:
-
-```scala
-@Cfg
-case class BarCfg(
-                   reqInt : Int,
-                   reqStr : String
-                 ) {
-
-  object foo {
-    val bool : Boolean = $
-
-    object baz {
-      val who  : String = "Calvin"
-      val other: Int    = $
-    }
-  }
-  val long : Long = $
-}
-```
-
-This, in particular, allows to directly embed the specification of inner objects
-without necessarily having to introduce a class for them.
-The `$` is a placeholder that gets replaced with appropriate extraction logic by
-the macro.
-
-Using `BarCfg`:
-
-```scala
-val bar = BarCfg(ConfigFactory.parseString(
-  """
-  reqInt = 9393
-  reqStr = "reqStr"
-  long = 1212100
-  foo {
-    bool = false
-    baz {
-      long = 1212100
-    }
-  }
-  """))
-
-bar.reqInt        ==> 9393
-bar.reqStr        ==> "reqStr"
-bar.foo.bool      ==> false
-bar.foo.baz.long  ==> 1212100
-bar.foo.baz.who   ==> "Calvin"
-bar.long          ==> 1212100
 ```
 
 ### Duration
