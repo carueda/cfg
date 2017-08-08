@@ -285,3 +285,7 @@ cfg.size     ==> 2048*1024
 cfg.sizeOpt  ==> None
 cfg.sizes    ==> List(1000, 64*1024*1024*1024L, 16*1000)
 ```
+
+# Contributing to `Cfg`
+
+Please see CONTRIBUTING.md
