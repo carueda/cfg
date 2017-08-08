@@ -138,8 +138,13 @@ private object CfgUtil {
                  $listElement)"""
           }
 
-        case _ if isBasicOrDuration(declType.syntax) ⇒
+        case _ if isBasic(declType.syntax) ⇒
           Term.Name("c.get" + declType + s"""("${param.name}")""")
+
+        case _ if declType.syntax == "Duration" ⇒
+          Term.Name(
+            s"""_root_.scala.concurrent.duration.Duration.fromNanos(
+               |c.getDuration("${param.name}").toNanos)""".stripMargin)
 
         case _ if isSizeInBytes(declType.syntax) ⇒
           Term.Name(s"""c.getBytes("${param.name}")""")
@@ -197,8 +202,9 @@ private object CfgUtil {
       Term.Name(s"""_.asInstanceOf[$elementType]""")
 
     case _ if elementType.syntax == "Duration" ⇒
-      q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
-         "d = " + v).getDuration("d")"""
+      q"""v => _root_.scala.concurrent.duration.Duration.fromNanos(
+         _root_.com.typesafe.config.ConfigFactory.parseString(
+         "d = " + v).getDuration("d").toNanos)"""
 
     case _ if elementType.syntax == "SizeInBytes" ⇒
       q"""v => _root_.com.typesafe.config.ConfigFactory.parseString(
@@ -234,8 +240,13 @@ private object CfgUtil {
                  $listElement)"""
           }
 
-        case _ if isBasicOrDuration(declTpe.syntax) ⇒
-          Term.Name(cn + s""".get${declTpe.syntax}("$name")""")
+        case _ if isBasic(declTpe.syntax) ⇒
+          Term.Name(s"""$cn.get${declTpe.syntax}("$name")""")
+
+        case _ if declTpe.syntax == "Duration" ⇒
+          Term.Name(
+            s"""_root_.scala.concurrent.duration.Duration.fromNanos(
+               |$cn.getDuration("$name").toNanos)""".stripMargin)
 
         case _ if isSizeInBytes(declTpe.syntax) ⇒
           Term.Name(cn + s""".getBytes("$name")""")
@@ -269,8 +280,13 @@ private object CfgUtil {
     case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
       abort("TODO List of " +argType+ "  : " + name)
 
-    case _ if isBasicOrDuration(typ.syntax) ⇒
-      Term.Name(cn + s""".get${typ.syntax}("$name")""")
+    case _ if isBasic(typ.syntax) ⇒
+      Term.Name(s"""$cn.get${typ.syntax}("$name")""")
+
+    case _ if typ.syntax == "Duration" ⇒
+      Term.Name(
+        s"""_root_.scala.concurrent.duration.Duration.fromNanos(
+           |$cn.getDuration("$name").toNanos)""".stripMargin)
 
     case _ if isSizeInBytes(typ.syntax) ⇒
       Term.Name(cn + s""".getBytes("$name")""")
@@ -312,10 +328,6 @@ private object CfgUtil {
   private def isBasic(typ: String): Boolean =
     Set("String", "Int", "Boolean", "Double", "Long"
     ).contains(typ)
-
-  private def isBasicOrDuration(typ: String): Boolean = {
-    isBasic(typ) || typ == "Duration"
-  }
 
   private def isSizeInBytes(typ: String): Boolean = typ == "SizeInBytes"
 

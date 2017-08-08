@@ -15,8 +15,8 @@ configuration access, as well as, of course, all the typical features
 of your IDE related with code completion, navigation, and refactoring. 
  
 `Cfg` supports all types handled by Typesafe Config, which, in Scala, are
-simply represented with the standard types  
-`String`, `Int`, `Long`, `Double`, `Boolean`, `java.time.Duration`, 
+represented with the standard types  
+`String`, `Int`, `Long`, `Double`, `Boolean`, `scala.concurrent.Duration`, 
 `SizeInBytes` (alias for `Long`), 
 along with `List[T]` and `Option[T]` 
 (where `T` is, recursively, any supported type). 
@@ -240,7 +240,7 @@ cfg.simples2 ==> List(
 ### Duration
 
 ```scala
-import java.time.Duration
+import scala.concurrent.duration._
 
 @Cfg
 case class WithDurationCfg(
@@ -253,7 +253,6 @@ val conf = ConfigFactory.parseString(
   """
   dur = 6h
   durs = [ 3600s, 1d ]
-  dur1 = 3s
   """)
 val cfg = WithDurationCfg(conf)
 cfg.dur.toHours  ==> 6

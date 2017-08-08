@@ -1,4 +1,4 @@
-import java.time.Duration
+import scala.concurrent.duration._
 
 import carueda.cfg._
 import com.typesafe.config.ConfigFactory
@@ -284,7 +284,7 @@ object Test extends TestSuite {
                                   durs   : List[Duration]
                                 ) {
 
-        val dur1    : Duration = $
+        val dur1    : Duration = 3.seconds
         val durOpt1 : Option[Duration] = $
         val durs1   : List[Duration] = $
       }
@@ -293,7 +293,6 @@ object Test extends TestSuite {
         """
           dur = 6h
           durs = [ 3600s, 1d ]
-          dur1 = 3s
           durOpt1 = 3h
           durs1 = [ 120m ]
         """.stripMargin)
