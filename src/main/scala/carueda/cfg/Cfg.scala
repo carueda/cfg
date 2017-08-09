@@ -121,7 +121,9 @@ private object CfgUtil {
 
       val actualGetter: Term = declType match {
         case Type.Apply(Type.Name("Option"), Seq(typ)) ⇒
-          q"""if ($cond) Some(${basicOrObjectGetter("c", param.name.syntax, typ)}) else None"""
+          val (t, nc) = basicOrObjectGetter("c", param.name.syntax, typ)
+          needJavaConverters = needJavaConverters || nc
+          q"""if ($cond) Some($t) else None"""
 
         case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
           needJavaConverters = true
@@ -225,7 +227,9 @@ private object CfgUtil {
 
       val actualGetter: Term = declTpe match {
         case Type.Apply(Type.Name("Option"), Seq(argType)) ⇒
-          q"""if ($cond) Some(${basicOrObjectGetter(cn, name, argType)}) else None"""
+          val (t, nc) = basicOrObjectGetter(cn, name, argType)
+          needJavaConverters = needJavaConverters || nc
+          q"""if ($cond) Some($t) else None"""
 
         case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
           needJavaConverters = true
@@ -273,28 +277,43 @@ private object CfgUtil {
     (templateStats, needJavaConverters)
   }
 
-  private def basicOrObjectGetter(cn: String, name: String, typ: Type): Term = typ match {
-    case Type.Apply(Type.Name("Option"), Seq(_)) ⇒
-      abort("Option only valid at first level in the type: " + name)
+  private def basicOrObjectGetter(cn: String, name: String, typ: Type): (Term, Boolean) = {
+    var needConverters = false
+    val term = typ match {
+      case Type.Apply(Type.Name("Option"), Seq(_)) ⇒
+        abort("Option only valid at first level in the type: " + name)
 
-    case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
-      abort("TODO List of " +argType+ "  : " + name)
+      case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
+        needConverters = true
+        val argArg = Lit.String(name)
+        val listElement = listElementAccessor(argType)
+        argType match {
+          case Type.Apply(Type.Name("List"), _) ⇒
+            q"""${Term.Name(cn)}.getAnyRefList($argArg).asScala.toList.map(
+                 _.asInstanceOf[_root_.java.util.ArrayList[_]]).map($listElement)"""
 
-    case _ if isBasic(typ.syntax) ⇒
-      Term.Name(s"""$cn.get${typ.syntax}("$name")""")
+          case _ ⇒
+            q"""${Term.Name(cn)}.getAnyRefList($argArg).asScala.toList.map(
+                 $listElement)"""
+        }
 
-    case _ if typ.syntax == "Duration" ⇒
-      Term.Name(
-        s"""_root_.scala.concurrent.duration.Duration.fromNanos(
-           |$cn.getDuration("$name").toNanos)""".stripMargin)
+      case _ if isBasic(typ.syntax) ⇒
+        Term.Name(s"""$cn.get${typ.syntax}("$name")""")
 
-    case _ if isSizeInBytes(typ.syntax) ⇒
-      Term.Name(cn + s""".getBytes("$name")""")
+      case _ if typ.syntax == "Duration" ⇒
+        Term.Name(
+          s"""_root_.scala.concurrent.duration.Duration.fromNanos(
+             |$cn.getDuration("$name").toNanos)""".stripMargin)
 
-    case _ ⇒
-      val arg = Term.Name(cn + s""".getConfig("$name")""")
-      val constructor = Ctor.Ref.Name(typ.syntax)
-      q"$constructor($arg)"
+      case _ if isSizeInBytes(typ.syntax) ⇒
+        Term.Name(cn + s""".getBytes("$name")""")
+
+      case _ ⇒
+        val arg = Term.Name(cn + s""".getConfig("$name")""")
+        val constructor = Ctor.Ref.Name(typ.syntax)
+        q"$constructor($arg)"
+    }
+    (term, needConverters)
   }
 
   private def handleObj(obj: Defn.Object, cn: String, level: Int): (Stat, Boolean) = {

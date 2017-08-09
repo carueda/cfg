@@ -205,6 +205,47 @@ object Test extends TestSuite {
       cfg.simple2 ==> Some(SimpleCfg(1, "str"))
     }
 
+    "WithOptListCfg" - {
+      @Cfg
+      case class WithOptListCfg(
+                             ints     : Option[List[Int]],
+                             simples1 : Option[List[SimpleCfg]]
+                           ) {
+
+        val simples2: Option[List[SimpleCfg]] = $
+        val simpless: Option[List[List[SimpleCfg]]] = $
+      }
+
+      val conf = ConfigFactory.parseString(
+        """
+          ints = [ 0, 8 ]
+          simples1 = [{
+            int = 11
+            str = str11
+          }, {
+            int = 12
+            str = str12
+          }]
+          simples2 = [{
+            int = 21
+            str = str21
+          }, {
+            int = 22
+            str = str22
+          }]
+          simpless = [ ${simples1}, ${simples2} ]
+        """.stripMargin).resolve()
+
+      val cfg = WithOptListCfg(conf)
+      cfg.ints     ==> Some(List(0, 8))
+
+      val list1 = List(SimpleCfg(11, "str11"), SimpleCfg(12, "str12"))
+      val list2 = List(SimpleCfg(21, "str21"), SimpleCfg(22, "str22"))
+      cfg.simples1  ==> Some(list1)
+      cfg.simples2  ==> Some(list2)
+      cfg.simpless  ==> Some(List(list1, list2))
+    }
+
     "WithListCfg" - {
       @Cfg
       case class WithListCfg(
