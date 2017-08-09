@@ -27,7 +27,7 @@ along with `List[T]` and `Option[T]`
 In your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.4"
+libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.5"
 
 // http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
 addCompilerPlugin(
