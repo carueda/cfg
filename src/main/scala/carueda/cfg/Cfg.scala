@@ -26,10 +26,10 @@ class Cfg extends scala.annotation.StaticAnnotation {
     defn match {
       case Term.Block(Seq(cls @ Defn.Class(mods, name, _, _, _),
            companion: Defn.Object)) if mods.exists(_.is[Mod.Case]) ⇒
-        CfgUtil.handleCaseClass(cls, name.syntax + ".$c", Some(companion))
+        CfgUtil.handleCaseClass(cls, name, Some(companion))
 
       case cls @ Defn.Class(mods, name, _, _, _) if mods.exists(_.is[Mod.Case]) ⇒
-        CfgUtil.handleCaseClass(cls, name.syntax + ".$c")
+        CfgUtil.handleCaseClass(cls, name)
 
       case _ ⇒
         //println(defn.structure)
@@ -39,7 +39,7 @@ class Cfg extends scala.annotation.StaticAnnotation {
 }
 
 private object CfgUtil {
-  def handleCaseClass(cls: Defn.Class, cn: String,
+  def handleCaseClass(cls: Defn.Class, typeName: Type.Name,
                       companionOpt: Option[Defn.Object] = None,
                       level: Int = 0
                      ): Term.Block = {
@@ -51,6 +51,8 @@ private object CfgUtil {
     ctor,
     template@Template(_, _, _, statsOpt)
     ) = cls
+
+    val cn = typeName.syntax + "." + memberConfigName
 
     var templateStats: List[Stat] = List.empty
 
@@ -73,7 +75,7 @@ private object CfgUtil {
 
     val hasBodyElements = templateStats.nonEmpty
     val (applyMethod, objNeedConverters) = createApply(name, ctor.paramss, hasBodyElements)
-    val decl = q"private var ${Pat.Var.Term(Term.Name("$c"))}: _root_.com.typesafe.config.Config = _"
+    val decl = q"private var ${Pat.Var.Term(memberConfigTermName)}: _root_.com.typesafe.config.Config = _"
 
     val newCompanion = companionOpt match {
       case None ⇒
@@ -115,13 +117,13 @@ private object CfgUtil {
 
     def getGetter(param: Term.Param): Term = {
       // condition in case of with-default or Option:
-      val cond = Term.Name(s"""c.hasPath("${param.name}")""")
+      val cond = Term.Name(s"""$paramConfigName.hasPath("${param.name}")""")
 
       val declType = param.decltpe.get
 
       val actualGetter: Term = declType match {
         case Type.Apply(Type.Name("Option"), Seq(typ)) ⇒
-          val (t, nc) = basicOrObjectGetter("c", param.name.syntax, typ)
+          val (t, nc) = basicOrObjectGetter(paramConfigName, param.name.syntax, typ)
           needJavaConverters = needJavaConverters || nc
           q"""if ($cond) Some($t) else None"""
 
@@ -132,27 +134,27 @@ private object CfgUtil {
           val listElement = listElementAccessor(argType)
           argType match {
             case Type.Apply(Type.Name("List"), _) ⇒
-              q"""c.getAnyRefList($argArg).asScala.toList.map(
+              q"""$paramConfigTermName.getAnyRefList($argArg).asScala.toList.map(
                  _.asInstanceOf[_root_.java.util.ArrayList[_]]).map($listElement)"""
 
             case _ ⇒
-              q"""c.getAnyRefList($argArg).asScala.toList.map(
+              q"""$paramConfigTermName.getAnyRefList($argArg).asScala.toList.map(
                  $listElement)"""
           }
 
         case _ if isBasic(declType.syntax) ⇒
-          Term.Name("c.get" + declType + s"""("${param.name}")""")
+          Term.Name(s"""$paramConfigName.get$declType("${param.name}")""")
 
         case _ if declType.syntax == "Duration" ⇒
           Term.Name(
             s"""_root_.scala.concurrent.duration.Duration.fromNanos(
-               |c.getDuration("${param.name}").toNanos)""".stripMargin)
+               |$paramConfigName.getDuration("${param.name}").toNanos)""".stripMargin)
 
         case _ if isSizeInBytes(declType.syntax) ⇒
-          Term.Name(s"""c.getBytes("${param.name}")""")
+          Term.Name(s"""$paramConfigName.getBytes("${param.name}")""")
 
         case _ ⇒
-          val arg = Term.Name(s"""c.getConfig("${param.name.syntax}")""")
+          val arg = Term.Name(s"""$paramConfigName.getConfig("${param.name.syntax}")""")
           val constructor = Ctor.Ref.Name(declType.syntax)
           q"$constructor($arg)"
       }
@@ -170,14 +172,14 @@ private object CfgUtil {
     val ctor = q"${Ctor.Ref.Name(name.value)}(...$args)"
     val defn = if (hasBodyElements)
       q"""
-          def apply(c: _root_.com.typesafe.config.Config): $name = {
-            ${Term.Name("$c")} = c
+          def apply($paramConfigTermName: _root_.com.typesafe.config.Config): $name = {
+            $memberConfigTermName = $paramConfigTermName
             $ctor
           }
       """
     else
       q"""
-          def apply(c: _root_.com.typesafe.config.Config): $name = {
+          def apply($paramConfigTermName: _root_.com.typesafe.config.Config): $name = {
             $ctor
           }
       """
@@ -223,7 +225,7 @@ private object CfgUtil {
     var needJavaConverters = false
 
     def getGetter(t: Pat.Var.Term, name: String): Term = {
-      val cond = Term.Name(cn + s""".hasPath("$name")""")
+      val cond = Term.Name(s"""$cn.hasPath("$name")""")
 
       val actualGetter: Term = declTpe match {
         case Type.Apply(Type.Name("Option"), Seq(argType)) ⇒
@@ -253,7 +255,7 @@ private object CfgUtil {
                |$cn.getDuration("$name").toNanos)""".stripMargin)
 
         case _ if isSizeInBytes(declTpe.syntax) ⇒
-          Term.Name(cn + s""".getBytes("$name")""")
+          Term.Name(s"""$cn.getBytes("$name")""")
 
         case _ ⇒
           val arg = Term.Name(s"""$cn.getConfig("$name")""")
@@ -306,10 +308,10 @@ private object CfgUtil {
              |$cn.getDuration("$name").toNanos)""".stripMargin)
 
       case _ if isSizeInBytes(typ.syntax) ⇒
-        Term.Name(cn + s""".getBytes("$name")""")
+        Term.Name(s"""$cn.getBytes("$name")""")
 
       case _ ⇒
-        val arg = Term.Name(cn + s""".getConfig("$name")""")
+        val arg = Term.Name(s"""$cn.getConfig("$name")""")
         val constructor = Ctor.Ref.Name(typ.syntax)
         q"$constructor($arg)"
     }
@@ -349,6 +351,12 @@ private object CfgUtil {
     ).contains(typ)
 
   private def isSizeInBytes(typ: String): Boolean = typ == "SizeInBytes"
+
+  private val paramConfigName  = "$cp"  // name of apply Config parameter
+  private val memberConfigName = "$cm"  // corresp member variable name (for access to case class)
+
+  private val paramConfigTermName  = Term.Name(paramConfigName)
+  private val memberConfigTermName = Term.Name(memberConfigName)
 
   private val importJavaConverters = q"import scala.collection.JavaConverters._"
 
