@@ -7,7 +7,7 @@
 Implemented using [Scalameta](http://scalameta.org/), 
 `Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper 
 that allows to specify the schema of your application or library
-configuration using plain old case classes and inner vals and objects.
+configuration using case classes and inner vals and objects.
 It generates an `apply(c: com.typesafe.config.Config)` method in the companion
 object to instantiate your case class with a given Typesafe Config object.
 With `Cfg` you enjoy type safety all the way from configuration spec to 
@@ -27,13 +27,13 @@ along with `List[T]` and `Option[T]`
 In your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.5"
+libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.5" % "provided"
 
-// http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
 addCompilerPlugin(
   ("org.scalameta" % "paradise" % "3.0.0-M8").cross(CrossVersion.full)
 )
 ```
+> See http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
 
 Use the `Cfg` annotation to specify the schema of your configuration:
 
@@ -287,4 +287,4 @@ cfg.sizes    ==> List(1000, 64*1024*1024*1024L, 16*1000)
 
 # Contributing to `Cfg`
 
-Please see CONTRIBUTING.md
+Please see [CONTRIBUTING.md](https://github.com/carueda/cfg/blob/master/CONTRIBUTING.md).
