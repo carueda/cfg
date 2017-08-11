@@ -33,7 +33,8 @@ addCompilerPlugin(
   ("org.scalameta" % "paradise" % "3.0.0-M8").cross(CrossVersion.full)
 )
 ```
-> See http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?
+> See [this Scalameta FAQ](
+http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?).
 
 Use the `Cfg` annotation to specify the schema of your configuration:
 
