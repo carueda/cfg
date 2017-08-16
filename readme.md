@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/carueda/cfg.svg?branch=master)](https://travis-ci.org/carueda/cfg)
 [![Coverage Status](https://coveralls.io/repos/github/carueda/cfg/badge.svg?branch=master)](https://coveralls.io/github/carueda/cfg?branch=master)
-
+[![Javadocs](https://javadoc.io/badge/com.github.carueda/cfg_2.12.svg)](https://javadoc.io/doc/com.github.carueda/cfg_2.12)
 
 # `Cfg` 
 
