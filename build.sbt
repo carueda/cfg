@@ -1,6 +1,6 @@
 organization := "com.github.carueda"
 name := "cfg"
-version := "0.0.5"
+version := "0.0.7"
 
 scalaVersion in ThisBuild := "2.12.2"
 
