@@ -1,17 +1,15 @@
 [![Build Status](https://travis-ci.org/carueda/cfg.svg?branch=master)](https://travis-ci.org/carueda/cfg)
 [![Coverage Status](https://coveralls.io/repos/github/carueda/cfg/badge.svg?branch=master)](https://coveralls.io/github/carueda/cfg?branch=master)
-[![Javadocs](https://javadoc.io/badge/com.github.carueda/cfg_2.12.svg)](https://javadoc.io/doc/com.github.carueda/cfg_2.12)
 
 # `Cfg` 
 
 Implemented using [Scalameta](http://scalameta.org/), 
-`Cfg` is an annotation  
-that allows to specify the _schema_ of your application or library
-configuration using case classes and inner vals and objects.
+`Cfg` is an annotation that allows to specify the _schema_ of your 
+application or library configuration using case classes and inner vals and objects.
 As a [Typesafe Config](https://github.com/typesafehub/config) wrapper,
 the `Cfg` annotation generates an `apply(c: com.typesafe.config.Config)` 
-method in the companion
-object to instantiate your case class with a given Typesafe Config object.
+method in the companion object to instantiate your case class from a given
+Typesafe Config object.
 With `Cfg` you enjoy type safety all the way from configuration spec to 
 configuration access along with all the typical associated features
 of your IDE related with code completion, navigation, and refactoring. 
@@ -35,8 +33,6 @@ addCompilerPlugin(
   ("org.scalameta" % "paradise" % "3.0.0-M8").cross(CrossVersion.full)
 )
 ```
-> See [this Scalameta FAQ](
-http://scalameta.org/tutorial/#HowdoIusemacroannotationsprovidedbyathird-partylibrary?).
 
 Use the `Cfg` annotation to specify the schema of your configuration:
 
@@ -140,7 +136,7 @@ case class BarCfg(
 This, in particular, allows to directly embed the specification of inner objects
 without necessarily having to introduce a class for them.
 The `$` is a placeholder that gets replaced with appropriate extraction logic by
-the Cfg annotation.
+the `Cfg` annotation.
 
 Using `BarCfg`:
 
@@ -289,6 +285,7 @@ cfg.sizeOpt  ==> None
 cfg.sizes    ==> List(1000, 64*1024*1024*1024L, 16*1000)
 ```
 
-# Contributing to `Cfg`
 
-Please see [CONTRIBUTING.md](https://github.com/carueda/cfg/blob/master/CONTRIBUTING.md).
+## tests
+
+https://github.com/carueda/cfg/tree/master/src/test/scala

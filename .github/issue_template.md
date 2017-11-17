@@ -1,7 +1,9 @@
-This is just a suggested template;
-please provide as much information as possible.
+This is just a suggested template; please provide as much information as possible.
 
-**Relevant versions (`Cfg`, Scala)**
+**Relevant versions**
+
+- `Cfg`:
+- Scala:
 
 **Steps to reproduce behavior**
 
