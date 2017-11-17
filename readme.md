@@ -16,7 +16,7 @@ of your IDE related with code completion, navigation, and refactoring.
  
 `Cfg` supports all types handled by Typesafe Config, which, in Scala, are
 represented with the standard types  
-`String`, `Int`, `Long`, `Double`, `Boolean`, `scala.concurrent.Duration`, 
+`String`, `Int`, `Long`, `Double`, `Boolean`, `scala.concurrent.duration.Duration`, 
 `SizeInBytes` (alias for `Long`), 
 along with `List[T]` and `Option[T]` 
 (where `T` is, recursively, any supported type). 
