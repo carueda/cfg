@@ -5,13 +5,15 @@
 # `Cfg` 
 
 Implemented using [Scalameta](http://scalameta.org/), 
-`Cfg` is a [Typesafe Config](https://github.com/typesafehub/config) wrapper 
-that allows to specify the schema of your application or library
+`Cfg` is an annotation  
+that allows to specify the _schema_ of your application or library
 configuration using case classes and inner vals and objects.
-It generates an `apply(c: com.typesafe.config.Config)` method in the companion
+As a [Typesafe Config](https://github.com/typesafehub/config) wrapper,
+the `Cfg` annotation generates an `apply(c: com.typesafe.config.Config)` 
+method in the companion
 object to instantiate your case class with a given Typesafe Config object.
 With `Cfg` you enjoy type safety all the way from configuration spec to 
-configuration access, as well as, of course, all the typical features
+configuration access along with all the typical associated features
 of your IDE related with code completion, navigation, and refactoring. 
  
 `Cfg` supports all types handled by Typesafe Config, which, in Scala, are
@@ -45,7 +47,8 @@ import carueda.cfg._
 case class SimpleCfg(int: Int, str: String)
 ```
 
-Use any usual Typesafe Config mechanism to load a concrete configuration:
+Use any usual Typesafe Config mechanism to load a concrete configuration,
+for example:
 
 ```scala
 val conf = com.typesafe.config.ConfigFactory.parseString(
@@ -126,8 +129,8 @@ case class BarCfg(
     val bool : Boolean = $
 
     object baz {
-      val who  : String = "Calvin"
-      val other: Int    = $
+      val who   : String = "Calvin"
+      val other : Int    = $
     }
   }
   val long : Long = $
@@ -137,7 +140,7 @@ case class BarCfg(
 This, in particular, allows to directly embed the specification of inner objects
 without necessarily having to introduce a class for them.
 The `$` is a placeholder that gets replaced with appropriate extraction logic by
-the macro.
+the Cfg annotation.
 
 Using `BarCfg`:
 
@@ -165,13 +168,13 @@ bar.long          ==> 1212100
 
 ### Lists
 
-Just use `List[T]`:
+As you would expect, just use `List[T]`:
 
 ```scala
 @Cfg
 case class WithListCfg(
-                      ints  : List[Int],
-                      strs  : List[String],
+                      ints     : List[Int],
+                      strs     : List[String],
                       simples1 : List[SimpleCfg],
                       simpless : List[List[SimpleCfg]]
                     ) {
