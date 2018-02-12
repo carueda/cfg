@@ -4,7 +4,7 @@ version := "0.0.8"
 
 scalaVersion in ThisBuild := "2.12.2"
 
-crossScalaVersions := Seq("2.11.11", "2.12.2")
+//crossScalaVersions := Seq("2.11.11", "2.12.2")
 
 lazy val metaMacroSettings: Seq[Def.Setting[_]] = Seq(
   // New-style macro annotations are under active development.  As a result, in
