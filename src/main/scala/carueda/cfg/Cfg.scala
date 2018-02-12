@@ -116,20 +116,21 @@ private object CfgUtil {
     var needJavaConverters = false
 
     def getGetter(param: Term.Param): Term = {
+      val name = unbacktick(param.name.syntax)
       // condition in case of with-default or Option:
-      val cond = Term.Name(s"""$paramConfigName.hasPath("${param.name}")""")
+      val cond = Term.Name(s"""$paramConfigName.hasPath("$name")""")
 
       val declType = param.decltpe.get
 
       val actualGetter: Term = declType match {
         case Type.Apply(Type.Name("Option"), Seq(typ)) ⇒
-          val (t, nc) = basicOrObjectGetter(paramConfigName, param.name.syntax, typ)
+          val (t, nc) = basicOrObjectGetter(paramConfigName, name, typ)
           needJavaConverters = needJavaConverters || nc
           q"""if ($cond) Some($t) else None"""
 
         case Type.Apply(Type.Name("List"), Seq(argType)) ⇒
           needJavaConverters = true
-          val argArg = Lit.String(param.name.syntax)
+          val argArg = Lit.String(name)
 
           val listElement = listElementAccessor(argType)
           argType match {
@@ -143,18 +144,18 @@ private object CfgUtil {
           }
 
         case _ if isBasic(declType.syntax) ⇒
-          Term.Name(s"""$paramConfigName.get$declType("${param.name}")""")
+          Term.Name(s"""$paramConfigName.get$declType("$name")""")
 
         case _ if declType.syntax == "Duration" ⇒
           Term.Name(
             s"""_root_.scala.concurrent.duration.Duration.fromNanos(
-               |$paramConfigName.getDuration("${param.name}").toNanos)""".stripMargin)
+               |$paramConfigName.getDuration("$name").toNanos)""".stripMargin)
 
         case _ if isSizeInBytes(declType.syntax) ⇒
-          Term.Name(s"""$paramConfigName.getBytes("${param.name}")""")
+          Term.Name(s"""$paramConfigName.getBytes("$name")""")
 
         case _ ⇒
-          val arg = Term.Name(s"""$paramConfigName.getConfig("${param.name.syntax}")""")
+          val arg = Term.Name(s"""$paramConfigName.getConfig("$name")""")
           val constructor = Ctor.Ref.Name(declType.syntax)
           q"$constructor($arg)"
       }
@@ -273,7 +274,7 @@ private object CfgUtil {
     var templateStats: List[Stat] = List.empty
     pats foreach {
       case t@Pat.Var.Term(Term.Name(name)) ⇒
-        val getter = getGetter(t, name)
+        val getter = getGetter(t, unbacktick(name))
         templateStats :+= q"""val $t: $declTpe = $getter"""
     }
     (templateStats, needJavaConverters)
@@ -323,8 +324,17 @@ private object CfgUtil {
 
     var templateStats: List[Stat] = List.empty
 
-    val newCn = Pat.Var.Term(Term.Name(("$" * level) + name.syntax))
-    val getter = Term.Name(s"""$cn.getConfig("${name.syntax}")""")
+    val newCn = {
+      val dollar = "$" * level
+      val str = {
+        if (hasBackticks(name.syntax))
+          s"`$dollar${unbacktick(name.syntax)}`"
+        else
+          s"`$dollar${name.syntax}`"
+      }
+      Pat.Var.Term(Term.Name(str))
+    }
+    val getter = Term.Name(s"""$cn.getConfig("${unbacktick(name.syntax)}")""")
     templateStats :+= q"""private val $newCn = $getter"""
 
     var needConverters = false
@@ -351,6 +361,10 @@ private object CfgUtil {
     ).contains(typ)
 
   private def isSizeInBytes(typ: String): Boolean = typ == "SizeInBytes"
+
+  private def hasBackticks(name: String): Boolean = name.startsWith("`")
+
+  private def unbacktick(name: String): String = name.replaceAll("^`|`$", "")
 
   private val paramConfigName  = "$cp"  // name of apply Config parameter
   private val memberConfigName = "$cm"  // corresp member variable name (for access to case class)
