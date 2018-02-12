@@ -1,3 +1,8 @@
+2018-02-12 0.3.0
+
+- just setting version to 0.3.0 as it seems I published a 
+  0.2.0 version by mistake.
+  
 2018-02-11 0.0.8
 
 - fix #1: "Backticks not properly handled".

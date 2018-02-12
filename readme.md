@@ -27,7 +27,7 @@ along with `List[T]` and `Option[T]`
 In your `build.sbt`:
 
 ```scala
-libraryDependencies += "com.github.carueda" %% "cfg" % "0.0.8" % "provided"
+libraryDependencies += "com.github.carueda" %% "cfg" % "0.3.0" % "provided"
 
 addCompilerPlugin(
   ("org.scalameta" % "paradise" % "3.0.0-M8").cross(CrossVersion.full)
