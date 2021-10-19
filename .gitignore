@@ -1,3 +1,6 @@
+.bloop
+.bsp
+.metals
 logs
 project/project
 project/target
@@ -6,6 +9,6 @@ tmp
 .history
 *.jfr
 dist
-/.idea
-/*.iml
-/out
+.vscode
+.idea
+out
